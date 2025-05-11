@@ -12,6 +12,7 @@ import android.widget.Toast;
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.wordcrush.Tools;
 import com.example.wordcrush.server.AccountServer;
 import com.example.wordcrush.MyCallBack;
 import com.example.wordcrush.R;
@@ -91,11 +92,11 @@ public class RegisterActivity extends AppCompatActivity implements View.OnClickL
                         errorTextView.setText("三秒后自动跳转至登录界面、请稍后......");
                         errorTextView.setVisibility(View.VISIBLE);
                         new Handler().postDelayed(() -> {
-                            Intent intent1 = new Intent(RegisterActivity.this, LoginActivity.class);
-                            intent1.putExtra("username", username);
-                            intent1.putExtra("password", password);
-                            startActivity(intent1);
-                            finish();  // 关闭当前页面
+                            Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
+                            intent.putExtra("username", username);
+                            intent.putExtra("password", password);
+                            setResult(Tools.REGISTER_RESULT, intent);
+                            finish();
                         }, 3000);
                     });
                 }

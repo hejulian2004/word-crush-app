@@ -9,8 +9,13 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.wordcrush.Tools;
 import com.example.wordcrush.server.AccountServer;
 import com.example.wordcrush.MyCallBack;
 import com.example.wordcrush.R;
@@ -22,6 +27,8 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
     Button loginButton;
     Button registerButton;
     TextView errorTextView;
+
+    ActivityResultLauncher<Intent> registerLauncher;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -40,20 +47,32 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
 
         usernameEditText = findViewById(R.id.usernameEditText);
         passwordEditText = findViewById(R.id.passwordEditText);
-        Intent intent = getIntent();
-        String tmpUsername = intent.getStringExtra("username");
-        String tmpPassword = intent.getStringExtra("password");
-        if(tmpUsername != null){
-            usernameEditText.setText(tmpUsername);
-        }
-        if(tmpPassword != null){
-            passwordEditText.setText(tmpPassword);
-        }
         errorTextView = findViewById(R.id.errorTextView);
         loginButton = findViewById(R.id.loginButton);
         loginButton.setOnClickListener(this);
         registerButton = findViewById(R.id.registerButton);
         registerButton.setOnClickListener(this);
+        registerLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                new ActivityResultCallback<ActivityResult>(){
+                    @Override
+                    public void onActivityResult(ActivityResult result) {
+                        if( result.getResultCode() == Tools.REGISTER_RESULT){
+                            Intent data = result.getData();
+                            if(data != null){
+                                String tmpUsername = data.getStringExtra("username");
+                                String tmpPassword = data.getStringExtra("password");
+                                if(tmpUsername != null){
+                                    usernameEditText.setText(tmpUsername);
+                                }
+                                if(tmpPassword != null){
+                                    passwordEditText.setText(tmpPassword);
+                                }
+                            }
+                        }
+                    }
+                }
+        );
     }
 
     public void makeToast(String message){
@@ -92,7 +111,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
             });
         } else if (vid == R.id.registerButton){
             Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
-            startActivity(intent);
+            registerLauncher.launch(intent);
         }
     }
 }
