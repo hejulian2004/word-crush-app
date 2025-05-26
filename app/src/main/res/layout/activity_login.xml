@@ -8,12 +8,18 @@
     android:gravity="center"
     android:background="@android:color/white">
 
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="100dp"
+        android:src="@drawable/logo"/>
+
     <TextView
         android:id="@+id/appTitle"
         android:text="单词消消乐"
         android:textSize="28sp"
         android:textStyle="bold"
         android:textColor="#3F51B5"
+        android:layout_marginTop="20dp"
         android:layout_marginBottom="24dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />

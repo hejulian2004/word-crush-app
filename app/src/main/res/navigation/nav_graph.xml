@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    app:startDestination="@id/nav_breakthrough">
+
+    <fragment
+        android:id="@+id/nav_breakthrough"
+        android:name="com.example.wordcrush.Fragment.BreakthroughFragment"
+        android:label="闯关模式"
+        tools:layout="@layout/fragment_breakthrough" />
+
+    <fragment
+        android:id="@+id/nav_notification"
+        android:name="com.example.wordcrush.Fragment.TimeLimitFragment"
+        android:label="Notification"
+        tools:layout="@layout/fragment_time_limit" />
+
+    <fragment
+        android:id="@+id/nav_word_book"
+        android:name="com.example.wordcrush.Fragment.WordBookFragment"
+        android:label="单词本"
+        tools:layout="@layout/fragment_word_book"/>
+
+    <fragment
+        android:id="@+id/nav_home"
+        android:name="com.example.wordcrush.Fragment.HomeFragment"
+        android:label="主页"
+        tools:layout="@layout/fragment_home" />
+</navigation>
