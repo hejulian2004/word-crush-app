@@ -18,6 +18,8 @@ import java.util.concurrent.Executors;
 import com.opencsv.CSVReader;
 
 public class WordServer {
+    private static List<Word> cachedWords = new ArrayList<>(); // 所有实例共享
+    private static boolean isLoading = false;
     private final Executor executor = Executors.newSingleThreadExecutor();
     private AppDatabase appDatabase;
     private Context context;
@@ -32,6 +34,11 @@ public class WordServer {
 
     public void loadWordsAsync(WordCallBack wordCallBack) {
         executorService.submit(() -> {
+            if(isLoading){
+                wordCallBack.onSuccess(cachedWords);
+                Tools.sendLog("缓存已有单词，从缓存加载");
+                return;
+            }
             List<WordEntity> wordEntities = appDatabase.wordDao().getAllWords();
             if(!wordEntities.isEmpty()){
                 List<Word> words = new ArrayList<>();
@@ -40,6 +47,9 @@ public class WordServer {
                 }
                 wordCallBack.onSuccess(words);
                 Tools.sendLog("数据库已有单词，从数据库加载");
+                isLoading = true;
+                cachedWords.clear();
+                cachedWords.addAll(words);
                 return;
             }
             AssetManager assetManager = context.getAssets();
@@ -59,6 +69,9 @@ public class WordServer {
                         words.add(word);
                     }
                 }
+                cachedWords.clear();
+                cachedWords.addAll(words);
+                isLoading = true;
                 Tools.sendLog("从文件中加载单词");
                 executor.execute(() ->{
                     appDatabase.wordDao().insertAll(wordEntityList);
@@ -106,6 +119,8 @@ public class WordServer {
     public void saveChange(Word word, MessageCallBack messageCallBack){
         executorService.submit(()->{
            appDatabase.wordDao().update(new WordEntity(word));
+           cachedWords.clear();
+           isLoading = false;
            messageCallBack.onSuccess("保存成功！");
         });
     }
@@ -125,6 +140,35 @@ public class WordServer {
                     messageCallBack.onSuccess("修改失败！" + entity.getEnglish());
                 }
             });
+        });
+    }
+
+    public void setMaster(List<String> learnedWord){
+        executorService.submit(()->{
+            for(String english: learnedWord){
+                setMaster(english, new MessageCallBack() {
+                    @Override
+                    public void onSuccess(String result) {
+                        Tools.sendLog(english + "已修改为掌握");
+                    }
+
+                    @Override
+                    public void onFailure(String e) {
+                        Tools.sendLog(english + "修改为掌握-失败");
+                    }
+                });
+            }
+        });
+    }
+
+    public void setAllWordNotMaster(){
+        executorService.submit(()->{
+            List<WordEntity> entities = appDatabase.wordDao().getAllWords();
+            for(WordEntity wordEntity: entities){
+                wordEntity.setMaster(false);
+            }
+            appDatabase.wordDao().updateAll(entities);
+            isLoading = false;
         });
     }
 }

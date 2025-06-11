@@ -6,5 +6,5 @@ import java.util.List;
 
 public interface GameRecordCallBack {
     public void onSuccess(List<GameRecord> gameRecords);
-    public void onFailed(String e);
+    public void onFailure(String e);
 }

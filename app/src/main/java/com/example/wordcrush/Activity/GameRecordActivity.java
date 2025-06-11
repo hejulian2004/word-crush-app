@@ -38,7 +38,7 @@ public class GameRecordActivity extends AppCompatActivity implements View.OnClic
             }
 
             @Override
-            public void onFailed(String e) {
+            public void onFailure(String e) {
 
             }
         });

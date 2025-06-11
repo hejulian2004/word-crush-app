@@ -14,9 +14,10 @@
 
         <!-- Avatar -->
         <ImageView
+            android:id="@+id/avatarImageView"
             android:layout_width="120dp"
             android:layout_height="120dp"
-            android:src="@drawable/default_avatar"
+            android:src="@drawable/logo"
             android:layout_marginBottom="16dp"
             android:scaleType="centerCrop"
             android:contentDescription="头像" />
@@ -48,6 +49,7 @@
                         android:textColor="#333" />
 
                     <TextView
+                        android:id="@+id/usernameText"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="默认用户名"
@@ -70,7 +72,7 @@
                         android:layout_marginBottom="8dp" />
 
                     <TextView
-                        android:id="@+id/game1Score"
+                        android:id="@+id/game0Score"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="0"
@@ -95,7 +97,7 @@
                         android:layout_marginBottom="8dp" />
 
                     <TextView
-                        android:id="@+id/game2Score"
+                        android:id="@+id/game1Score"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="0"
@@ -110,6 +112,14 @@
         </androidx.cardview.widget.CardView>
 
         <!-- 功能按钮 -->
+        <Button
+            android:id="@+id/syncCloudData"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="同步云端数据"
+            android:layout_marginBottom="12dp"
+            android:backgroundTint="#ffcF50"
+            android:textColor="#FFFFFF" />
 
         <Button
             android:id="@+id/gameRecordBtn"

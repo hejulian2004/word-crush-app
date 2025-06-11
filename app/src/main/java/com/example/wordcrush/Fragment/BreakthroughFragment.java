@@ -17,6 +17,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.bumptech.glide.Glide;
 import com.example.wordcrush.Activity.RankingActivity;
 import com.example.wordcrush.GameRecord.GameRecord;
 import com.example.wordcrush.R;
@@ -35,7 +36,7 @@ import java.util.Collections;
 import java.util.List;
 
 public class BreakthroughFragment extends Fragment implements View.OnClickListener{
-
+    ImageView avatarImageView;
     private AudioServer audioServer;
     private WordServer wordServer;
 
@@ -63,6 +64,8 @@ public class BreakthroughFragment extends Fragment implements View.OnClickListen
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        avatarImageView = view.findViewById(R.id.avatarImageView);
+        setAvatar();
         audioServer = new AudioServer(requireContext());
         words = new ArrayList<>();
         wordServer = new WordServer(requireContext());
@@ -72,7 +75,6 @@ public class BreakthroughFragment extends Fragment implements View.OnClickListen
         getScoreText(view);
         getBtnAndSetListener(view);
         getHeart(view);
-
         getWords();
     }
 
@@ -94,10 +96,20 @@ public class BreakthroughFragment extends Fragment implements View.OnClickListen
             }
         });
     }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        if(score!=0){
+            gameOver();
+        }
+    }
+
     @Override
     public void onClick(View v) {
         if(v.getId() == R.id.rankingBtn){
             Intent intent = new Intent(requireActivity(), RankingActivity.class);
+            intent.putExtra("gameType", 0);
             startActivity(intent);
             return;
         }
@@ -113,17 +125,16 @@ public class BreakthroughFragment extends Fragment implements View.OnClickListen
         } else if(match[lastIndex] == index){//成功配对
             btn[lastIndex].setVisibility(View.GONE);
             btn[index].setVisibility(View.GONE);
-            String english;
+            String[] english;
             if (isEnglish[lastIndex]) {
-                english = btn[lastIndex].getText().toString();
-                audioServer.getAudioServer(english, 1);
+                english = btn[lastIndex].getText().toString().split("\n");
+                audioServer.getAudioServer(english[0], 1);
             } else {
-                english = btn[index].getText().toString();
-                audioServer.getAudioServer(english, 1);
-
+                english = btn[index].getText().toString().split("\n");
+                audioServer.getAudioServer(english[0], 1);
             }
-            learnedWords.add(english);
-            wordServer.setMaster(btn[lastIndex].getText().toString(), new MessageCallBack() {
+            learnedWords.add(english[0]);
+            wordServer.setMaster(english[0], new MessageCallBack() {
                 @Override
                 public void onSuccess(String result) {
                     Tools.sendLog(result);
@@ -159,7 +170,10 @@ public class BreakthroughFragment extends Fragment implements View.OnClickListen
                 continue;
             }
             word_tmp.add(words.get(wordIndex++));
-            wordIndex = wordIndex%(words.size());
+            if(wordIndex >= words.size()){
+                Tools.toast("已经学完所有单词，程序当前未考虑学习完成后的状况，会出现未知bug！", requireContext());
+                break;
+            }
         }
         List<Integer>index_tmp = new ArrayList<>();
         for(int i=0; i<12 ;i++){
@@ -167,8 +181,12 @@ public class BreakthroughFragment extends Fragment implements View.OnClickListen
         }
         Collections.shuffle(index_tmp);
         for(int i=0; i<6; i++){
-            btn[index_tmp.get(i)].setText(word_tmp.get(i).getEnglish());
-            btn[index_tmp.get(i+6)].setText(word_tmp.get(i).getChinese());
+            String tmpEnglish = word_tmp.get(i).getEnglish().replace("\n", "");
+            String tmpPronunciation = word_tmp.get(i).getPronunciation().replace("\n", "").replace("/", "");
+            String tmp = tmpEnglish + "\n\n" + tmpPronunciation;
+            btn[index_tmp.get(i)].setText(tmp);
+            String tmpChinese = word_tmp.get(i).getChinese().replace("；", ";").replace("，", ",").replace("\n", "");
+            btn[index_tmp.get(i+6)].setText(tmpChinese);
             match[index_tmp.get(i)] = index_tmp.get(i+6);
             match[index_tmp.get(i+6)] = index_tmp.get(i);
             isEnglish[index_tmp.get(i)] = true;
@@ -181,6 +199,7 @@ public class BreakthroughFragment extends Fragment implements View.OnClickListen
         setBtnColor();
     }
     private void gameOver(){
+        if (getContext() == null) return;
         saveRecord();
         new AlertDialog.Builder(getContext())
                 .setTitle("游戏结束！")
@@ -196,7 +215,7 @@ public class BreakthroughFragment extends Fragment implements View.OnClickListen
 
     private void saveRecord(){
         LocalDateTime now = LocalDateTime.now();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH:mm");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH:mm:ss.SSS");
         String time = now.format(formatter);
         gameRecordServer.setGameRecordsAsync(new GameRecord(0, score, time, learnedWords), new MessageCallBack() {
             @Override
@@ -212,6 +231,7 @@ public class BreakthroughFragment extends Fragment implements View.OnClickListen
     }
 
     private void restartGame(){
+        wordIndex = 0;
         //重新获取单词
         getWords();
         setDefault();
@@ -348,5 +368,24 @@ public class BreakthroughFragment extends Fragment implements View.OnClickListen
             return 11;
         }
         return -1;
+    }
+
+    public void setAvatar(){
+        if(Tools.avatarUrl.isEmpty()){
+            reSetAvatar();
+            return;
+        }
+        Glide.with(requireContext())
+                .load(Tools.avatarUrl)
+                .placeholder(R.drawable.default_avatar) // 默认头像
+                .into(avatarImageView);
+    }
+    public void reSetAvatar(){
+        String avatarUrl = Tools.DOMAIN + "/static/avatars/" + Tools.username + ".jpg" + "?t=" + System.currentTimeMillis();
+        Tools.avatarUrl = avatarUrl;
+        Glide.with(requireContext())
+                .load(avatarUrl)
+                .placeholder(R.drawable.default_avatar) // 默认头像
+                .into(avatarImageView);
     }
 }

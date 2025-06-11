@@ -1,19 +1,20 @@
 package com.example.wordcrush.Ranking;
 
+import static androidx.core.content.ContentProviderCompat.requireContext;
+
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.example.wordcrush.R;
-import com.example.wordcrush.Server.AudioServer;
-import com.example.wordcrush.Word.Word;
+import com.example.wordcrush.Tools.Tools;
 
 import java.util.List;
 
@@ -37,10 +38,14 @@ public class RankingAdapter extends RecyclerView.Adapter<RankingAdapter.RankingV
     @Override
     public void onBindViewHolder(@NonNull RankingViewHolder holder, int position) {
         Ranking ranking = rankings.get(position);
-        holder.rankingNumber.setText(String.valueOf(ranking.getRankingNumber()));
-        holder.rankingAvatar.setImageResource(ranking.getRankingAvatar());
-        holder.rankingScore.setText("得分：" + ranking.getRankingScorer());
-        holder.rankingHeart.setText("剩余生命值：" + ranking.getRankingHeart());
+        holder.rankingName.setText(ranking.getRankingName());
+        holder.rankingScore.setText("得分：" + ranking.getRankingScorer() );
+        holder.rankingNumber.setText(position + 1 + "");
+        holder.rankingTime.setText(ranking.getRankingTime());
+        Glide.with(context)
+                .load(Tools.DOMAIN +  "/static/avatars/" + ranking.getRankingName() + ".jpg?time=" + System.currentTimeMillis())
+                .placeholder(R.drawable.default_avatar) // 默认头像
+                .into(holder.rankingAvatar);
     }
 
     @Override
@@ -50,14 +55,14 @@ public class RankingAdapter extends RecyclerView.Adapter<RankingAdapter.RankingV
 
 
     static class RankingViewHolder extends RecyclerView.ViewHolder{
-        TextView rankingNumber, rankingName, rankingScore, rankingHeart;
+        TextView rankingNumber, rankingName, rankingScore, rankingTime;
         ImageView rankingAvatar;
         public RankingViewHolder(@NonNull View itemView) {
             super(itemView);
             rankingNumber = itemView.findViewById(R.id.rankingNumber);
             rankingName = itemView.findViewById(R.id.rankingName);
             rankingScore = itemView.findViewById(R.id.rankingScore);
-            rankingHeart = itemView.findViewById(R.id.rankingHeart);
+            rankingTime = itemView.findViewById(R.id.rankingTime);
             rankingAvatar = itemView.findViewById(R.id.rankingAvatar);
         }
     }

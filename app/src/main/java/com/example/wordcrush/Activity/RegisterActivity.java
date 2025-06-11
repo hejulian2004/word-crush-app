@@ -66,6 +66,10 @@ public class RegisterActivity extends AppCompatActivity implements View.OnClickL
             String username = registerUsernameEditText.getText().toString();
             String password = registerPasswordEditText.getText().toString();
             String confirmPassword = confirmPasswordEditText.getText().toString();
+            if(password.length()<6){
+                Tools.toast("密码长度必须大于等于六位！", this);
+                return;
+            }
             if(username.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()){
                 runOnUiThread(()->{
                     errorTextView.setText("账号或密码不能为空！");
@@ -110,6 +114,10 @@ public class RegisterActivity extends AppCompatActivity implements View.OnClickL
                     });
                 }
             });
+        }else if(v.getId() == R.id.backButton){
+            Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
+            startActivity(intent);
+            finish();
         }
 
     }

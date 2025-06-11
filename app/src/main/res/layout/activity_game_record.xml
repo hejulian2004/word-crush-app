@@ -23,18 +23,8 @@
             android:layout_height="wrap_content"
             android:text="游戏历史记录"
             android:textSize="24sp"
-            android:textStyle="bold"
-            android:layout_marginRight="30dp"/>
+            android:textStyle="bold" />
 
-
-        <Button
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="同步云端数据"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.449"
-            app:layout_constraintStart_toEndOf="@+id/gameRecordTitleText"
-            app:layout_constraintTop_toTopOf="parent" />
     </LinearLayout>
 
 

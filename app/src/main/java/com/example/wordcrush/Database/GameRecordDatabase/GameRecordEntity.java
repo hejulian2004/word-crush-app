@@ -7,6 +7,7 @@ import androidx.room.TypeConverters;
 
 import com.example.wordcrush.Database.Converters;
 import com.example.wordcrush.GameRecord.GameRecord;
+import com.example.wordcrush.Tools.Tools;
 
 import java.util.List;
 
@@ -15,13 +16,14 @@ public class GameRecordEntity {
     @PrimaryKey(autoGenerate = true)
     private int id;
     private int gameType, score;
-    private String time;
+    private String time, username;
 
     private List<String> learnedWords;
 
     public GameRecordEntity(){}
     @Ignore
     public GameRecordEntity(int gameType, int score, String time, List<String> learnedWords){
+        this.username = Tools.username;
         this.gameType = gameType;
         this.score = score;
         this.time = time;
@@ -30,6 +32,7 @@ public class GameRecordEntity {
 
     @Ignore
     public GameRecordEntity(GameRecord gameRecord){
+        this.username = Tools.username;
         this.gameType = gameRecord.getGameType();
         this.score = gameRecord.getScore();
         this.time = gameRecord.getTime();
@@ -74,5 +77,13 @@ public class GameRecordEntity {
 
     public void setLearnedWords(List<String> learnedWords) {
         this.learnedWords = learnedWords;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
     }
 }

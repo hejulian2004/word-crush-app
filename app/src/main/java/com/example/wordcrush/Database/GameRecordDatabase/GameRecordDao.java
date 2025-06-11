@@ -1,11 +1,13 @@
 package com.example.wordcrush.Database.GameRecordDatabase;
 
 import androidx.room.Dao;
+import androidx.room.Delete;
 import androidx.room.Insert;
 import androidx.room.Query;
 import androidx.room.Update;
 
 import com.example.wordcrush.Database.WordDatabse.WordEntity;
+import com.example.wordcrush.Tools.Tools;
 
 import java.util.List;
 
@@ -23,6 +25,18 @@ public interface GameRecordDao {
     @Update
     void updateAll(List<GameRecordEntity> gameRecordEntities);
 
-    @Query("SELECT * FROM GAME_RECORD ORDER BY ID DESC")
-    List<GameRecordEntity> getAllGameRecords();
+    @Query("SELECT * FROM GAME_RECORD WHERE username = :username ORDER BY ID DESC")
+    List<GameRecordEntity> getAllGameRecords(String username);
+
+    @Query("SELECT gameType, score FROM GAME_RECORD WHERE username = :username")
+    List<GameTypeScore> getGameTypeAndScore(String username);
+
+    @Query("DELETE FROM GAME_RECORD WHERE gameType = :gameType AND score = :score AND time = :time")
+    int deleteRecordByGameTypeScoreTime(int gameType, int score, String time);
+
+    @Query("DELETE FROM GAME_RECORD")
+    void deleteAllRecords();
+
+    @Insert
+    void insertAllRecords(List<GameRecordEntity> wordEntities);
 }

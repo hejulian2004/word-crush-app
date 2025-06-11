@@ -25,6 +25,8 @@
     <EditText
         android:id="@+id/registerUsernameEditText"
         android:hint="请输入用户名"
+        android:digits="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        android:maxLength="20"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@android:drawable/edit_text"

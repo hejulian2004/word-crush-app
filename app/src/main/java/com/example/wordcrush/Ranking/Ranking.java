@@ -1,14 +1,13 @@
 package com.example.wordcrush.Ranking;
 
 public class Ranking {
-    private int rankingNumber, rankingScorer, rankingHeart, rankingAvatar;
-    private String rankingName;
-    public Ranking(int rankingNumber, int rankingAvatar, String rankingName, int rankingScorer, int rankingHeart){
-        this.rankingNumber = rankingNumber;
-        this.rankingAvatar = rankingAvatar;
+    private int rankingNumber, rankingScorer;
+    private String rankingName, rankingTime;
+
+    public Ranking(String rankingName, int rankingScore, String rankingTime){
         this.rankingName = rankingName;
-        this.rankingScorer = rankingScorer;
-        this.rankingHeart = rankingHeart;
+        this.rankingScorer = rankingScore;
+        this.rankingTime = rankingTime;
     }
 
     public void setRankingNumber(int rankingNumber) {
@@ -27,20 +26,12 @@ public class Ranking {
         return rankingScorer;
     }
 
-    public void setRankingHeart(int rankingHeart) {
-        this.rankingHeart = rankingHeart;
+    public String getRankingTime() {
+        return rankingTime;
     }
 
-    public int getRankingHeart() {
-        return rankingHeart;
-    }
-
-    public void setRankingAvatar(int rankingAvatar) {
-        this.rankingAvatar = rankingAvatar;
-    }
-
-    public int getRankingAvatar() {
-        return rankingAvatar;
+    public void setRankingTime(String rankingTime) {
+        this.rankingTime = rankingTime;
     }
 
     public void setRankingName(String rankingName) {
