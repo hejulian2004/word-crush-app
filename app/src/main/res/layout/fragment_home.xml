@@ -57,61 +57,70 @@
                         android:textColor="#555" />
                 </LinearLayout>
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="8dp">
+<!--                <LinearLayout-->
+<!--                    android:layout_width="match_parent"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:orientation="horizontal"-->
+<!--                    android:layout_marginBottom="8dp">-->
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="挑战模式累计得分："
-                        android:textSize="18sp"
-                        android:textColor="#444"
-                        android:layout_marginBottom="8dp" />
+<!--                    <TextView-->
+<!--                        android:layout_width="wrap_content"-->
+<!--                        android:layout_height="wrap_content"-->
+<!--                        android:text="挑战模式累计得分："-->
+<!--                        android:textSize="18sp"-->
+<!--                        android:textColor="#444"-->
+<!--                        android:layout_marginBottom="8dp" />-->
 
-                    <TextView
-                        android:id="@+id/game0Score"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textSize="18sp"
-                        android:textColor="#444"
-                        android:layout_marginBottom="8dp" />
+<!--                    <TextView-->
+<!--                        android:id="@+id/game0Score"-->
+<!--                        android:layout_width="wrap_content"-->
+<!--                        android:layout_height="wrap_content"-->
+<!--                        android:text="0"-->
+<!--                        android:textSize="18sp"-->
+<!--                        android:textColor="#444"-->
+<!--                        android:layout_marginBottom="8dp" />-->
 
-                </LinearLayout>
+<!--                </LinearLayout>-->
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="8dp">
+<!--                <LinearLayout-->
+<!--                    android:layout_width="match_parent"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:orientation="horizontal"-->
+<!--                    android:layout_marginBottom="8dp">-->
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="限时模式累计得分："
-                        android:textSize="18sp"
-                        android:textColor="#444"
-                        android:layout_marginBottom="8dp" />
+<!--                    <TextView-->
+<!--                        android:layout_width="wrap_content"-->
+<!--                        android:layout_height="wrap_content"-->
+<!--                        android:text="限时模式累计得分："-->
+<!--                        android:textSize="18sp"-->
+<!--                        android:textColor="#444"-->
+<!--                        android:layout_marginBottom="8dp" />-->
 
-                    <TextView
-                        android:id="@+id/game1Score"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textSize="18sp"
-                        android:textColor="#444"
-                        android:layout_marginBottom="8dp" />
+<!--                    <TextView-->
+<!--                        android:id="@+id/game1Score"-->
+<!--                        android:layout_width="wrap_content"-->
+<!--                        android:layout_height="wrap_content"-->
+<!--                        android:text="0"-->
+<!--                        android:textSize="18sp"-->
+<!--                        android:textColor="#444"-->
+<!--                        android:layout_marginBottom="8dp" />-->
 
-                </LinearLayout>
+<!--                </LinearLayout>-->
 
             </LinearLayout>
 
         </androidx.cardview.widget.CardView>
 
         <!-- 功能按钮 -->
+        <Button
+            android:id="@+id/showScore"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="查看游戏分数"
+            android:layout_marginBottom="12dp"
+            android:backgroundTint="#11cF50"
+            android:textColor="#FFFFFF" />
+
         <Button
             android:id="@+id/syncCloudData"
             android:layout_width="match_parent"

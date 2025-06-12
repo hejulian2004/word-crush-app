@@ -15,13 +15,19 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
+import android.os.Handler;
+import android.os.Looper;
+
 public class AudioServer {
     private Context context;
+    private MediaPlayer mediaPlayer;
+    private Handler mainHandler = new Handler(Looper.getMainLooper());
 
     public AudioServer(Context context) {
         this.context = context;
     }
-    public void getAudioServer(String word, int type){
+
+    public void getAudioServer(String word, int type) {
         OkHttpClient client = new OkHttpClient();
         Request request = new Request.Builder()
                 .url("https://dict.youdao.com/dictvoice?type=" + type + "&audio=" + word)
@@ -36,25 +42,46 @@ public class AudioServer {
                 if (response.isSuccessful()) {
                     assert response.body() != null;
                     byte[] audioBytes = response.body().bytes();
-                    playAudio(audioBytes);
+                    // 切换到主线程播放音频
+                    mainHandler.post(() -> playAudio(audioBytes));
                 }
             }
         });
     }
+
     private void playAudio(byte[] audioData) {
         try {
-            // 创建临时文件来保存音频数据
+            if (mediaPlayer != null) {
+                mediaPlayer.release();
+                mediaPlayer = null;
+            }
+            // 创建临时文件保存音频数据
             File tempFile = File.createTempFile("audio", ".mp3", context.getCacheDir());
             FileOutputStream fos = new FileOutputStream(tempFile);
             fos.write(audioData);
             fos.close();
-            // 使用 MediaPlayer 播放音频
-            MediaPlayer mediaPlayer = new MediaPlayer();
+
+            mediaPlayer = new MediaPlayer();
             mediaPlayer.setDataSource(tempFile.getAbsolutePath());
-            mediaPlayer.prepare();
-            mediaPlayer.start();
+            mediaPlayer.setOnPreparedListener(mp -> mp.start());
+            mediaPlayer.setOnCompletionListener(mp -> {
+                // 播放完成后释放资源并删除临时文件
+                mp.release();
+                mediaPlayer = null;
+                tempFile.delete();
+            });
+            mediaPlayer.prepareAsync(); // 异步准备
+
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+
+    public void release() {
+        if (mediaPlayer != null) {
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
+    }
 }
+

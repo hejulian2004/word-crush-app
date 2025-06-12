@@ -7,6 +7,7 @@ import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.os.StrictMode;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,6 +17,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.databinding.library.baseAdapters.BuildConfig;
 import androidx.fragment.app.Fragment;
 
 import com.bumptech.glide.Glide;
@@ -265,6 +267,11 @@ public class TimeLimitFragment extends Fragment implements View.OnClickListener 
 
 
     private void gameOver() {
+        if (timer != null) {
+            timer.cancel(); // 先暂停倒计时
+            timer = null;
+        }
+        timeText.setText(String.valueOf("180"));
         if (getContext() == null) return;
         saveRecord();
         new AlertDialog.Builder(getContext())
@@ -273,6 +280,7 @@ public class TimeLimitFragment extends Fragment implements View.OnClickListener 
                 .setPositiveButton("确定", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
+
                         restartGame();
                     }
                 })
@@ -301,7 +309,7 @@ public class TimeLimitFragment extends Fragment implements View.OnClickListener 
         gameBody.setVisibility(View.GONE);
         wordIndex = 0;
         //重新获取单词
-        getWords();
+        //getWords();
         //重置
         setDefault();
     }

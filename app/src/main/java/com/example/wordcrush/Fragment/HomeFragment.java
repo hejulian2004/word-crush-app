@@ -12,6 +12,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.StrictMode;
 import android.provider.MediaStore;
 import android.text.InputType;
 import android.view.LayoutInflater;
@@ -28,6 +29,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.databinding.library.baseAdapters.BuildConfig;
 import androidx.fragment.app.Fragment;
 
 import com.bumptech.glide.Glide;
@@ -62,6 +64,8 @@ public class HomeFragment extends Fragment implements View.OnClickListener{
     private TextView usernameText, game0ScoreText, game1ScoreText;
     ImageView avatarImageView;
 
+    private Button showScore;
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -78,9 +82,16 @@ public class HomeFragment extends Fragment implements View.OnClickListener{
         view.findViewById(R.id.changePasswordBtn).setOnClickListener(this);
         view.findViewById(R.id.syncCloudData).setOnClickListener(this);
         recordServer = new GameRecordServer(requireContext());
-        game0ScoreText = view.findViewById(R.id.game0Score);
-        game1ScoreText = view.findViewById(R.id.game1Score);
-        getAllScore();
+//        game0ScoreText = view.findViewById(R.id.game0Score);
+//        game1ScoreText = view.findViewById(R.id.game1Score);
+//        getAllScore();
+        showScore = view.findViewById(R.id.showScore);
+        showScore.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                getAllScore();
+            }
+        });
         usernameText = view.findViewById(R.id.usernameText);
         usernameText.setText(Tools.username);
         avatarImageView = view.findViewById(R.id.avatarImageView);
@@ -116,8 +127,11 @@ public class HomeFragment extends Fragment implements View.OnClickListener{
             @Override
             public void onSuccess(Bundle bundle) {
                 getActivity().runOnUiThread(()->{
-                    game0ScoreText.setText(String.valueOf(bundle.get("score0")));
-                    game1ScoreText.setText(String.valueOf(bundle.get("score1")));
+                    new AlertDialog.Builder(getContext())
+                            .setTitle("查看游戏分数")
+                            .setMessage("闯关模式分数：" + bundle.getInt("score0") + "\n" + "限时模式分数：" +bundle.getInt("score1"))
+                            .setPositiveButton("确定", null)
+                            .show();
                 });
             }
 
@@ -174,7 +188,7 @@ public class HomeFragment extends Fragment implements View.OnClickListener{
                                 gameRecordServer.insertAllRecords(gameRecordEntities, new MessageCallBack() {
                                     @Override
                                     public void onSuccess(String result) {
-                                        getAllScore();
+                                        //getAllScore();
                                         Tools.sendLog(result);
                                     }
 

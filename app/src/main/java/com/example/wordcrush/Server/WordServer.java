@@ -20,7 +20,6 @@ import com.opencsv.CSVReader;
 public class WordServer {
     private static List<Word> cachedWords = new ArrayList<>(); // 所有实例共享
     private static boolean isLoading = false;
-    private final Executor executor = Executors.newSingleThreadExecutor();
     private AppDatabase appDatabase;
     private Context context;
     private String fileName = "wordbook.csv";
@@ -73,10 +72,10 @@ public class WordServer {
                 cachedWords.addAll(words);
                 isLoading = true;
                 Tools.sendLog("从文件中加载单词");
-                executor.execute(() ->{
+                //executorService.execute(() ->{
                     appDatabase.wordDao().insertAll(wordEntityList);
                     Tools.sendLog("保存到数据库成功！");
-                });
+                //});
                 wordCallBack.onSuccess(words);
             } catch (Exception e) {
                 wordCallBack.onFailure("文件读取失败！"+ e);
