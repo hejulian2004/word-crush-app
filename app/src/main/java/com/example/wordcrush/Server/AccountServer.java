@@ -148,7 +148,7 @@ public class AccountServer {
                 .build();
 
         Request request = new Request.Builder()
-                .url(Tools.DOMAIN + "/api/uploadAvatar") // 替换为你的上传地址
+                .url(Tools.DOMAIN + "/api/uploadAvatar")
                 .post(requestBody)
                 .build();
 
