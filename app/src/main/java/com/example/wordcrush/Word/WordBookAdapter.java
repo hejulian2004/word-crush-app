@@ -20,15 +20,10 @@ import java.util.List;
 public class WordBookAdapter extends RecyclerView.Adapter<WordBookAdapter.WordBookViewHolder> {
     private Context context;
     private List<Word> words;
-    private AudioServer audioServer;
-    private WordServer wordServer;
     public WordBookAdapter(Context context, List<Word> words){
         this.context = context;
         this.words = words;
-        audioServer = new AudioServer(context);
-        wordServer = new WordServer(context);
     }
-
 
     @NonNull
     @Override
@@ -54,15 +49,15 @@ public class WordBookAdapter extends RecyclerView.Adapter<WordBookAdapter.WordBo
             holder.btnNotMastered.setBackgroundColor(0xFFF44336);//#F44336
         }
         holder.labelUk.setOnClickListener(v ->{
-            audioServer.getAudioServer(word.getEnglish(), 1);
+            AudioServer.getInstance().getAudioServer(context, word.getEnglish(), 1);
         });
         holder.labelUs.setOnClickListener(v ->{
-            audioServer.getAudioServer(word.getEnglish(), 0 );
+            AudioServer.getInstance().getAudioServer(context, word.getEnglish(), 0 );
         });
         holder.btnMastered.setOnClickListener(v ->{
             word.setIsMaster(true);
             notifyItemChanged(position);
-            wordServer.saveChange(word, new MessageCallBack() {
+            WordServer.getInstance().saveChange(context, word, new MessageCallBack() {
                 @Override
                 public void onSuccess(String result) {
                     Tools.sendLog("单词保存成功！");
@@ -77,7 +72,7 @@ public class WordBookAdapter extends RecyclerView.Adapter<WordBookAdapter.WordBo
         holder.btnNotMastered.setOnClickListener(v ->{
             word.setIsMaster(false);
             notifyItemChanged(position);
-            wordServer.saveChange(word, new MessageCallBack() {
+            WordServer.getInstance().saveChange(context, word, new MessageCallBack() {
                 @Override
                 public void onSuccess(String result) {
                     Tools.sendLog("单词保存成功！");

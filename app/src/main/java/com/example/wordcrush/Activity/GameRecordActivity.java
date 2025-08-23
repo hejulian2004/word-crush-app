@@ -27,9 +27,8 @@ public class GameRecordActivity extends AppCompatActivity implements View.OnClic
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_game_record);
-        gameRecordServer = new GameRecordServer(this);
         gameRecords = new ArrayList<>();
-        gameRecordServer.getGameRecordsAsync(new GameRecordCallBack() {
+        GameRecordServer.getInstance().getGameRecordsAsync(getApplicationContext(),new GameRecordCallBack() {
             @Override
             public void onSuccess(List<GameRecord> gr) {
                 gameRecords.clear();

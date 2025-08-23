@@ -7,12 +7,12 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.StrictMode;
 import android.provider.MediaStore;
 import android.text.InputType;
 import android.view.LayoutInflater;
@@ -23,20 +23,17 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.databinding.library.baseAdapters.BuildConfig;
 import androidx.fragment.app.Fragment;
 
 import com.bumptech.glide.Glide;
 import com.example.wordcrush.Activity.GameRecordActivity;
 import com.example.wordcrush.Activity.LoginActivity;
-import com.example.wordcrush.Database.AppDatabase;
-import com.example.wordcrush.Database.GameRecordDatabase.GameRecordEntity;
+import com.example.wordcrush.Database.GameRecord.GameRecordEntity;
 import com.example.wordcrush.GameRecord.GameRecord;
 import com.example.wordcrush.R;
 import com.example.wordcrush.Server.AccountServer;
@@ -54,16 +51,14 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 
 public class HomeFragment extends Fragment implements View.OnClickListener{
 
     private ActivityResultLauncher<Intent> pickImageLauncher;
-    private AccountServer accountServer;
-    GameRecordServer recordServer;
-    private TextView usernameText, game0ScoreText, game1ScoreText;
+    private TextView usernameText;
     ImageView avatarImageView;
-
     private Button showScore;
 
     @Nullable
@@ -75,16 +70,11 @@ public class HomeFragment extends Fragment implements View.OnClickListener{
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        accountServer = new AccountServer(requireContext());
         view.findViewById(R.id.logoutButton).setOnClickListener(this);
         view.findViewById(R.id.gameRecordBtn).setOnClickListener(this);
         view.findViewById(R.id.changeAvatarBtn).setOnClickListener(this);
         view.findViewById(R.id.changePasswordBtn).setOnClickListener(this);
         view.findViewById(R.id.syncCloudData).setOnClickListener(this);
-        recordServer = new GameRecordServer(requireContext());
-//        game0ScoreText = view.findViewById(R.id.game0Score);
-//        game1ScoreText = view.findViewById(R.id.game1Score);
-//        getAllScore();
         showScore = view.findViewById(R.id.showScore);
         showScore.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -102,7 +92,7 @@ public class HomeFragment extends Fragment implements View.OnClickListener{
                     if (result.getResultCode() == RESULT_OK && result.getData() != null) {
                         Uri imageUri = result.getData().getData();
                         File file = uriToFile(imageUri);
-                        accountServer.uploadImageToServer(file, new MessageCallBack() {
+                        AccountServer.getInstance().uploadImageToServer(file, new MessageCallBack() {
                             @Override
                             public void onSuccess(String result) {
                                 Tools.sendLog(result);
@@ -123,7 +113,7 @@ public class HomeFragment extends Fragment implements View.OnClickListener{
     }
 
     private void getAllScore() {
-        recordServer.getAllScore(new MyCallBack() {
+        GameRecordServer.getInstance().getAllScore(requireContext(), new MyCallBack() {
             @Override
             public void onSuccess(Bundle bundle) {
                 getActivity().runOnUiThread(()->{
@@ -176,16 +166,15 @@ public class HomeFragment extends Fragment implements View.OnClickListener{
                 .setPositiveButton("确认", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        GameRecordServer gameRecordServer = new GameRecordServer(context);
-                        gameRecordServer.getAllRecordFromCloud(new GameRecordCallBack() {
+                        GameRecordServer.getInstance().getAllRecordFromCloud(new GameRecordCallBack() {
                             @Override
                             public void onSuccess(List<GameRecord> gameRecords) {
-                                gameRecordServer.deleteAllRecords();
+                                GameRecordServer.getInstance().deleteAllRecords(requireContext());
                                 List<GameRecordEntity> gameRecordEntities = new ArrayList<>();
                                 for(GameRecord record : gameRecords){
                                     gameRecordEntities.add(new GameRecordEntity(record));
                                 }
-                                gameRecordServer.insertAllRecords(gameRecordEntities, new MessageCallBack() {
+                                GameRecordServer.getInstance().insertAllRecords(requireContext(), gameRecordEntities, new MessageCallBack() {
                                     @Override
                                     public void onSuccess(String result) {
                                         //getAllScore();
@@ -197,10 +186,9 @@ public class HomeFragment extends Fragment implements View.OnClickListener{
                                         Tools.sendLog(e);
                                     }
                                 });
-                                WordServer wordServer = new WordServer(getContext());
-                                wordServer.setAllWordNotMaster();
+                                WordServer.getInstance().setAllWordNotMaster(requireContext());
                                 for(GameRecord record: gameRecords){
-                                    wordServer.setMaster(record.getLearnedWords());
+                                    WordServer.getInstance().setMaster(requireContext(), record.getLearnedWords());
                                 }
 
                                 ((Activity) context).runOnUiThread(()->{
@@ -226,11 +214,12 @@ public class HomeFragment extends Fragment implements View.OnClickListener{
     }
 
     private void logout(){
-        if(getContext() != null){
-            getContext().deleteFile("userFile.txt");
-        }
-        WordServer server = new WordServer(getContext());
-        server.setAllWordNotMaster();
+        SharedPreferences sp = requireContext().getSharedPreferences("word-crush", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sp.edit();
+        editor.putString("token", "");
+        editor.putString("uid", "");
+        editor.apply();
+        WordServer.getInstance().setAllWordNotMaster(requireContext());
         Intent intent = new Intent(getActivity(), LoginActivity.class);
         Tools.avatarUrl="";
         startActivity(intent);
@@ -332,7 +321,7 @@ public class HomeFragment extends Fragment implements View.OnClickListener{
                     Tools.toast("密码位数须大于6位", context);
                 } else {
                     // TODO: 这里执行修改密码逻辑，比如调用服务器接口
-                    accountServer.changePassword(oldPwd, newPwd, new MessageCallBack() {
+                    AccountServer.getInstance().changePassword(oldPwd, newPwd, new MessageCallBack() {
                         @Override
                         public void onSuccess(String result) {
                             ((Activity) context).runOnUiThread(()->{

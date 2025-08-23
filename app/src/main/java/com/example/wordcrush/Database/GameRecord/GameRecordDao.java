@@ -1,13 +1,9 @@
-package com.example.wordcrush.Database.GameRecordDatabase;
+package com.example.wordcrush.Database.GameRecord;
 
 import androidx.room.Dao;
-import androidx.room.Delete;
 import androidx.room.Insert;
 import androidx.room.Query;
 import androidx.room.Update;
-
-import com.example.wordcrush.Database.WordDatabse.WordEntity;
-import com.example.wordcrush.Tools.Tools;
 
 import java.util.List;
 

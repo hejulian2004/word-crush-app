@@ -6,9 +6,8 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 
 import com.example.wordcrush.Database.AppDatabase;
-import com.example.wordcrush.Database.GameRecordDatabase.GameRecordEntity;
-import com.example.wordcrush.Database.GameRecordDatabase.GameTypeScore;
-import com.example.wordcrush.Database.WordDatabse.WordEntity;
+import com.example.wordcrush.Database.GameRecord.GameRecordEntity;
+import com.example.wordcrush.Database.GameRecord.GameTypeScore;
 import com.example.wordcrush.GameRecord.GameRecord;
 import com.example.wordcrush.Tools.GameRecordCallBack;
 import com.example.wordcrush.Tools.MessageCallBack;
@@ -34,19 +33,29 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class GameRecordServer {
-    private AppDatabase appDatabase;
-    private Context context;
-    ExecutorService executorService;
-    public GameRecordServer(Context context){
-        this.context = context;
-        this.executorService = Executors.newSingleThreadExecutor();
-        this.appDatabase = AppDatabase.getDatabase(context);
+
+    private static volatile GameRecordServer gameRecordServer;
+
+    private static ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+    public static GameRecordServer getInstance(){
+        if(gameRecordServer == null){
+            synchronized (GameRecordServer.class){
+                if(gameRecordServer == null){
+                    gameRecordServer = new GameRecordServer();
+                }
+            }
+        }
+        return gameRecordServer;
     }
 
-    public void getGameRecordsAsync(GameRecordCallBack callBack){
+    private GameRecordServer(){}
+
+
+    public void getGameRecordsAsync(Context context, GameRecordCallBack callBack){
         executorService.submit(()->{
             try{
-                List<GameRecordEntity> gameRecordEntities = appDatabase.gameRecordDao().getAllGameRecords(Tools.username);
+                List<GameRecordEntity> gameRecordEntities = AppDatabase.getDatabase(context).gameRecordDao().getAllGameRecords(Tools.username);
                 List<GameRecord> gameRecords = new ArrayList<>();
                 for(GameRecordEntity entity: gameRecordEntities){
                     gameRecords.add(new GameRecord(entity));
@@ -58,10 +67,10 @@ public class GameRecordServer {
         });
     }
 
-    public void setGameRecordsAsync(GameRecord record, MessageCallBack callBack){
+    public void setGameRecordsAsync(Context context, GameRecord record, MessageCallBack callBack){
         executorService.submit(() ->{
             try{
-                appDatabase.gameRecordDao().insertGameRecord(new GameRecordEntity(record));
+                AppDatabase.getDatabase(context).gameRecordDao().insertGameRecord(new GameRecordEntity(record));
                 callBack.onSuccess("游戏记录插入成功！" + record);
                 uploadCloud(record, new MessageCallBack() {
                     @Override
@@ -81,14 +90,14 @@ public class GameRecordServer {
         });
     }
 
-    public void setGameRecordsAsync(List<GameRecord> records, MessageCallBack callBack){
+    public void setGameRecordsAsync(Context context, List<GameRecord> records, MessageCallBack callBack){
         executorService.submit(() ->{
             List<GameRecordEntity> entities = new ArrayList<>();
             for(GameRecord record : records){
                 entities.add(new GameRecordEntity(record));
             }
             try{
-                appDatabase.gameRecordDao().insertAllGameRecord(entities);
+                AppDatabase.getDatabase(context).gameRecordDao().insertAllGameRecord(entities);
                 callBack.onSuccess("游戏记录插入成功！" + entities);
             } catch (Exception e){
                 callBack.onFailure("游戏记录插入失败！" + entities);
@@ -201,9 +210,9 @@ public class GameRecordServer {
         });
     }
 
-    public void getAllScore(MyCallBack callBack){
+    public void getAllScore(Context context, MyCallBack callBack){
         executorService.submit(()->{
-            List<GameTypeScore> gameTypeScores = appDatabase.gameRecordDao().getGameTypeAndScore(Tools.username);
+            List<GameTypeScore> gameTypeScores = AppDatabase.getDatabase(context).gameRecordDao().getGameTypeAndScore(Tools.username);
             int score0 = 0;
             int score1 = 0;
             for(GameTypeScore record: gameTypeScores){
@@ -221,21 +230,21 @@ public class GameRecordServer {
         });
     }
 
-    public void deleteAllRecords(){
+    public void deleteAllRecords(Context context){
         executorService.submit(()->{
-            appDatabase.gameRecordDao().deleteAllRecords();
+            AppDatabase.getDatabase(context).gameRecordDao().deleteAllRecords();
         });
     }
 
-    public void insertAllRecords(List<GameRecordEntity> gameRecordEntities, MessageCallBack callBack){
+    public void insertAllRecords(Context context, List<GameRecordEntity> gameRecordEntities, MessageCallBack callBack){
         executorService.submit(()->{
-            appDatabase.gameRecordDao().insertAllRecords(gameRecordEntities);
+            AppDatabase.getDatabase(context).gameRecordDao().insertAllRecords(gameRecordEntities);
             callBack.onSuccess("所有游戏记录保存成功！");
         });
     }
-    public void deleteRecordByGameTypeScoreTime(int gameType, int score, String time, MessageCallBack callBack){
+    public void deleteRecordByGameTypeScoreTime(Context context, int gameType, int score, String time, MessageCallBack callBack){
         executorService.submit(()->{
-            int count = appDatabase.gameRecordDao().deleteRecordByGameTypeScoreTime(gameType, score, time);
+            int count = AppDatabase.getDatabase(context).gameRecordDao().deleteRecordByGameTypeScoreTime(gameType, score, time);
             if(count == 0){
                 callBack.onFailure("游戏记录删除失败！");
             } else{

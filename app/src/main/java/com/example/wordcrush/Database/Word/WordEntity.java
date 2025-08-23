@@ -1,4 +1,4 @@
-package com.example.wordcrush.Database.WordDatabse;
+package com.example.wordcrush.Database.Word;
 
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;

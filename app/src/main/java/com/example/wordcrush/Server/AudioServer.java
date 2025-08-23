@@ -19,15 +19,25 @@ import android.os.Handler;
 import android.os.Looper;
 
 public class AudioServer {
-    private Context context;
-    private MediaPlayer mediaPlayer;
+    private static MediaPlayer mediaPlayer;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
 
-    public AudioServer(Context context) {
-        this.context = context;
+    private AudioServer() {}
+
+    private static volatile AudioServer audioServer;
+
+    public static AudioServer getInstance(){
+        if(audioServer == null){
+            synchronized (AudioServer.class){
+                if(audioServer == null){
+                    audioServer = new AudioServer();
+                }
+            }
+        }
+        return audioServer;
     }
 
-    public void getAudioServer(String word, int type) {
+    public void getAudioServer(Context context, String word, int type) {
         OkHttpClient client = new OkHttpClient();
         Request request = new Request.Builder()
                 .url("https://dict.youdao.com/dictvoice?type=" + type + "&audio=" + word)
@@ -43,13 +53,13 @@ public class AudioServer {
                     assert response.body() != null;
                     byte[] audioBytes = response.body().bytes();
                     // 切换到主线程播放音频
-                    mainHandler.post(() -> playAudio(audioBytes));
+                    mainHandler.post(() -> playAudio(context, audioBytes));
                 }
             }
         });
     }
 
-    private void playAudio(byte[] audioData) {
+    private void playAudio(Context context, byte[] audioData) {
         try {
             if (mediaPlayer != null) {
                 mediaPlayer.release();

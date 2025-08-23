@@ -25,12 +25,9 @@ public class GameRecordAdapter extends RecyclerView.Adapter<GameRecordAdapter.Ga
     private Context context;
     private List<GameRecord> gameRecords;
 
-    private GameRecordServer gameRecordServer;
-
     public GameRecordAdapter(Context context, List<GameRecord> gameRecords){
         this.context = context;
         this.gameRecords = gameRecords;
-        this.gameRecordServer = new GameRecordServer(context);
     }
 
 
@@ -89,7 +86,7 @@ public class GameRecordAdapter extends RecyclerView.Adapter<GameRecordAdapter.Ga
                                     return;
                                 }
                                 GameRecord _record = gameRecords.get(currentPos);
-                                gameRecordServer.deleteRecordByGameTypeScoreTime(_record.getGameType(), _record.getScore(), _record.getTime(), new MessageCallBack() {
+                                GameRecordServer.getInstance().deleteRecordByGameTypeScoreTime(context, _record.getGameType(), _record.getScore(), _record.getTime(), new MessageCallBack() {
                                     @Override
                                     public void onSuccess(String result) {
                                         ((Activity) context).runOnUiThread(()->{

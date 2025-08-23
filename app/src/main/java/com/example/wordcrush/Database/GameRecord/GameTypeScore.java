@@ -1,4 +1,4 @@
-package com.example.wordcrush.Database.GameRecordDatabase;
+package com.example.wordcrush.Database.GameRecord;
 
 public class GameTypeScore {
     public int gameType;

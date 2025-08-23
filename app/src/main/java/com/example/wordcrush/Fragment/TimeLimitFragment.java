@@ -49,11 +49,6 @@ public class TimeLimitFragment extends Fragment implements View.OnClickListener 
     TextView timeText;
 
     List<String> learnedWords;
-
-    private GameRecordServer gameRecordServer;
-    //
-    private AudioServer audioServer;
-    private WordServer wordServer;
     private List<Word> words;
     private boolean[] isSelected;
     private int[] match;
@@ -78,7 +73,6 @@ public class TimeLimitFragment extends Fragment implements View.OnClickListener 
         super.onViewCreated(view, savedInstanceState);
         avatarImageView = view.findViewById(R.id.avatarImageView);
         setAvatar();
-        gameRecordServer = new GameRecordServer(requireContext());
         startGameBtn = view.findViewById(R.id.startGameBtn);
         gameBody = view.findViewById(R.id.gameBody);
         timeText = view.findViewById(R.id.time);
@@ -91,16 +85,14 @@ public class TimeLimitFragment extends Fragment implements View.OnClickListener 
             }
         });
         //
-        audioServer = new AudioServer(requireContext());
         words = new ArrayList<>();
-        wordServer = new WordServer(requireContext());
         rankingBtn = view.findViewById(R.id.rankingBtn);
         rankingBtn.setOnClickListener(this);
         getScoreText(view);
         getBtnAndSetListener(view);
         getHeart(view);
 
-        wordServer.loadWordsAsync(new WordCallBack() {
+        WordServer.getInstance().loadWordsAsync(requireContext(), new WordCallBack() {
             @Override
             public void onSuccess(List<Word> loadWords) {
                 words.clear();
@@ -143,7 +135,7 @@ public class TimeLimitFragment extends Fragment implements View.OnClickListener 
 
     //
     private void getWords() {
-        wordServer.loadWordsAsync(new WordCallBack() {
+        WordServer.getInstance().loadWordsAsync(requireContext(), new WordCallBack() {
             @Override
             public void onSuccess(List<Word> loadWords) {
                 words.clear();
@@ -184,13 +176,13 @@ public class TimeLimitFragment extends Fragment implements View.OnClickListener 
             String[] english;
             if (isEnglish[lastIndex]) {
                 english = btn[lastIndex].getText().toString().split("\n");
-                audioServer.getAudioServer(english[0], 1);
+                AudioServer.getInstance().getAudioServer(getContext(), english[0], 1);
             } else {
                 english = btn[index].getText().toString().split("\n");
-                audioServer.getAudioServer(english[0], 1);
+                AudioServer.getInstance().getAudioServer(getContext(), english[0], 1);
             }
             learnedWords.add(english[0]);
-            wordServer.setMaster(english[0], new MessageCallBack() {
+            WordServer.getInstance().setMaster(requireContext(), english[0], new MessageCallBack() {
                 @Override
                 public void onSuccess(String result) {
                     Tools.sendLog(result);
@@ -291,7 +283,7 @@ public class TimeLimitFragment extends Fragment implements View.OnClickListener 
         LocalDateTime now = LocalDateTime.now();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH:mm:ss.SSS");
         String time = now.format(formatter);
-        gameRecordServer.setGameRecordsAsync(new GameRecord(1, score, time, learnedWords), new MessageCallBack() {
+        GameRecordServer.getInstance().setGameRecordsAsync(getContext(), new GameRecord(1, score, time, learnedWords), new MessageCallBack() {
             @Override
             public void onSuccess(String result) {
                 Tools.sendLog(result);

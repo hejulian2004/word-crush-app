@@ -5,7 +5,7 @@ import android.util.Log;
 import android.widget.Toast;
 
 public class Tools {
-    public static String DOMAIN = "http://192.168.201.21:5000";
+    public static String DOMAIN = "http://192.168.201.21:8080";
     //public static String DOMAIN = "http://hejulian.cn:5000";
     public static int REGISTER_RESULT = 0;
 
@@ -21,4 +21,11 @@ public class Tools {
     public static String username = "";
 
     public static String avatarUrl= "";
+
+    public static final String loginUrl = "/api/user/login";
+    public static final String checkTokenUrl = "/api/user/checkToken";
+
+    public static String token = "";
+
+    public static String uid = "";
 }

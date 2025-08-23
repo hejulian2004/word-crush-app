@@ -1,6 +1,6 @@
 package com.example.wordcrush.Word;
 
-import com.example.wordcrush.Database.WordDatabse.WordEntity;
+import com.example.wordcrush.Database.Word.WordEntity;
 
 public class Word {
     private String english, pronunciation, chinese;

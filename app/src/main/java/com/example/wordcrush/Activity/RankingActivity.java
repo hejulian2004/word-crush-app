@@ -25,7 +25,6 @@ import java.util.List;
 
 public class RankingActivity extends AppCompatActivity implements View.OnClickListener {
     List<Ranking>rankings = new ArrayList<>();
-    GameRecordServer gameRecordServerr;
     private AppDatabase appDatabase;
     TextView rankingTitleText;
     @Override
@@ -33,7 +32,6 @@ public class RankingActivity extends AppCompatActivity implements View.OnClickLi
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_ranking);
         appDatabase = AppDatabase.getDatabase(this);
-        gameRecordServerr = new GameRecordServer(this);
         Intent intent= getIntent();
         int gameType = intent.getIntExtra("gameType", 0);
         rankingTitleText = findViewById(R.id.rankingTitleText);
@@ -42,7 +40,7 @@ public class RankingActivity extends AppCompatActivity implements View.OnClickLi
         } else{
             rankingTitleText.setText("限时模式排行榜");
         }
-        gameRecordServerr.getTopNRecord(gameType, 50, new MyCallBack() {
+        GameRecordServer.getInstance().getTopNRecord(gameType, 50, new MyCallBack() {
             @Override
             public void onSuccess(Bundle bundle) {
                 ArrayList<String> recordsJson = bundle.getStringArrayList("records");

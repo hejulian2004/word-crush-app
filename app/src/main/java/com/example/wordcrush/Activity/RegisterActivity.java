@@ -87,8 +87,7 @@ public class RegisterActivity extends AppCompatActivity implements View.OnClickL
             runOnUiThread(()->{
                 errorTextView.setVisibility(View.GONE);
             });
-            AccountServer accountServer = new AccountServer(username, password);
-            accountServer.register(new MessageCallBack() {
+            AccountServer.getInstance().register(username, password, new MessageCallBack() {
                 @Override
                 public void onSuccess(String result) {
                     makeToast(result);

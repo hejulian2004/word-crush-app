@@ -3,7 +3,6 @@ package com.example.wordcrush.Fragment;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.StrictMode;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -15,7 +14,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.databinding.library.baseAdapters.BuildConfig;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -32,7 +30,6 @@ import java.util.List;
 public class WordBookFragment extends Fragment {
 
     private List<Word> words = new ArrayList<>();
-    private WordServer wordServer;
     private RecyclerView recyclerView;
     private WordBookAdapter adapter;
     private EditText searchText;
@@ -78,14 +75,13 @@ public class WordBookFragment extends Fragment {
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         adapter = new WordBookAdapter(requireContext(), words);
         recyclerView.setAdapter(adapter);
-        wordServer = new WordServer(requireContext());
 
         loadWords();
     }
 
     private void searchWords(){
         String search = searchText.getText().toString().trim();
-        wordServer.searchWordsAsync(search, new WordCallBack() {
+        WordServer.getInstance().searchWordsAsync(requireContext(), search, new WordCallBack() {
             @Override
             public void onSuccess(List<Word> searchWords) {
                 mainHandler.post(() ->{
@@ -107,7 +103,7 @@ public class WordBookFragment extends Fragment {
     }
 
     private void searchWords(boolean isMastered){
-        wordServer.searchWordsAsync(isMastered, new WordCallBack() {
+        WordServer.getInstance().searchWordsAsync(requireContext(), isMastered, new WordCallBack() {
             @Override
             public void onSuccess(List<Word> searchWords) {
                 mainHandler.post(() ->{
@@ -128,7 +124,7 @@ public class WordBookFragment extends Fragment {
         });
     }
     private void loadWords() {
-        wordServer.loadWordsAsync(new WordCallBack() {
+        WordServer.getInstance().loadWordsAsync(requireContext(), new WordCallBack() {
             @Override
             public void onSuccess(List<Word> loadWords) {
                 mainHandler.post(() -> {

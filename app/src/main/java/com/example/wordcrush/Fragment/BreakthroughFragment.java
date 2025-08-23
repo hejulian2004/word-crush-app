@@ -1,6 +1,7 @@
 package com.example.wordcrush.Fragment;
 
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.ColorStateList;
@@ -39,10 +40,6 @@ import java.util.List;
 
 public class BreakthroughFragment extends Fragment implements View.OnClickListener{
     ImageView avatarImageView;
-    private AudioServer audioServer;
-    private WordServer wordServer;
-
-    private GameRecordServer gameRecordServer;
     private List<Word> words;
 
     private List<String> learnedWords;
@@ -68,10 +65,7 @@ public class BreakthroughFragment extends Fragment implements View.OnClickListen
         super.onViewCreated(view, savedInstanceState);
         avatarImageView = view.findViewById(R.id.avatarImageView);
         setAvatar();
-        audioServer = new AudioServer(requireContext());
         words = new ArrayList<>();
-        wordServer = new WordServer(requireContext());
-        gameRecordServer = new GameRecordServer(requireContext());
         rankingBtn = view.findViewById(R.id.rankingBtn);
         rankingBtn.setOnClickListener(this);
         getScoreText(view);
@@ -81,7 +75,7 @@ public class BreakthroughFragment extends Fragment implements View.OnClickListen
     }
 
     private void getWords(){
-        wordServer.loadWordsAsync(new WordCallBack() {
+        WordServer.getInstance().loadWordsAsync(requireContext(), new WordCallBack() {
             @Override
             public void onSuccess(List<Word> loadWords) {
                 words.clear();
@@ -130,13 +124,13 @@ public class BreakthroughFragment extends Fragment implements View.OnClickListen
             String[] english;
             if (isEnglish[lastIndex]) {
                 english = btn[lastIndex].getText().toString().split("\n");
-                audioServer.getAudioServer(english[0], 1);
+                AudioServer.getInstance().getAudioServer(getContext(), english[0], 1);
             } else {
                 english = btn[index].getText().toString().split("\n");
-                audioServer.getAudioServer(english[0], 1);
+                AudioServer.getInstance().getAudioServer(getContext(), english[0], 1);
             }
             learnedWords.add(english[0]);
-            wordServer.setMaster(english[0], new MessageCallBack() {
+            WordServer.getInstance().setMaster(requireContext(), english[0], new MessageCallBack() {
                 @Override
                 public void onSuccess(String result) {
                     Tools.sendLog(result);
@@ -219,7 +213,7 @@ public class BreakthroughFragment extends Fragment implements View.OnClickListen
         LocalDateTime now = LocalDateTime.now();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH:mm:ss.SSS");
         String time = now.format(formatter);
-        gameRecordServer.setGameRecordsAsync(new GameRecord(0, score, time, learnedWords), new MessageCallBack() {
+        GameRecordServer.getInstance().setGameRecordsAsync(getContext(), new GameRecord(0, score, time, learnedWords), new MessageCallBack() {
             @Override
             public void onSuccess(String result) {
                 Tools.sendLog(result);

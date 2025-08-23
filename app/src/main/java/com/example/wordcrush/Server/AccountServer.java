@@ -4,15 +4,19 @@ import android.content.Context;
 
 import androidx.annotation.NonNull;
 
+import com.example.wordcrush.Tools.ApiResponse;
 import com.example.wordcrush.Tools.MessageCallBack;
 import com.example.wordcrush.Tools.MyCallBack;
 import com.example.wordcrush.Tools.Tools;
+import com.google.gson.Gson;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Type;
+import java.util.Map;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -24,34 +28,25 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class AccountServer {
-    private String username;
-    private String password;
-    private boolean isLogin = false;
 
-    private Context context;
-    public AccountServer(String username, String password){
-        this.username = username;
-        this.password = password;
-    }
-    public AccountServer(String username){
-        this.username = username;
-        this.password = null;
-    }
+    private static volatile AccountServer instance;
 
-    public AccountServer(Context context){
-        this.context = context;
+    private AccountServer(){}
+
+    public static AccountServer getInstance(){
+        if(instance == null){
+            synchronized (AccountServer.class){
+                if(instance == null){
+                    instance = new AccountServer();
+                }
+            }
+        }
+        return instance;
     }
 
-    public void setIsLogin(boolean isLogin) {
-        isLogin = isLogin;
-    }
-
-    private boolean checkIsLogin(){
-        return false;
-    }
-
-    public void login(MessageCallBack messageCallBack){
+    public void login(String username, String password, MessageCallBack messageCallBack){
         OkHttpClient client = new OkHttpClient();
+        Gson gson = new Gson();
         JSONObject jsonObject = new JSONObject();
         try {
             jsonObject.put("username", username);
@@ -62,7 +57,7 @@ public class AccountServer {
         MediaType mediaType = MediaType.get("application/json; charset=utf-8");
         RequestBody body = RequestBody.create(jsonObject.toString(), mediaType);
         Request request = new Request.Builder()
-                .url(Tools.DOMAIN + "/api/login")
+                .url(Tools.DOMAIN + Tools.loginUrl)
                 .post(body)
                 .build();
         client.newCall(request).enqueue(new Callback() {
@@ -73,29 +68,83 @@ public class AccountServer {
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 if (response.isSuccessful() && response.body()!=null) {
-                    String responseData = response.body().string();
-                    try {
-                        JSONObject jsonObject = new JSONObject(responseData);
-                        String status = jsonObject.getString("status");
-                        String message = jsonObject.getString("message");
-                        if("success".equals(status)){
-                            messageCallBack.onSuccess(message);
+                    String responseBody = response.body().string();
+                    Type type = new com.google.gson.reflect.TypeToken<ApiResponse<Map<String, String>>>() {}.getType();
+                    ApiResponse<Map<String, String>> apiResponse = gson.fromJson(responseBody, type);
+                    int code = apiResponse.getCode();
+                    String msg = apiResponse.getMsg();
+                    if(code == 200){
+                        try {
+                            Map<String, String> data = apiResponse.getData();
+                            Tools.username = data.get("username");
+                            Tools.uid = data.get("uid");
+                            Tools.token = data.get("token");
+                            Tools.sendLog("username:" + Tools.username + " uid:" + Tools.uid + " token:" + Tools.token );
+                            messageCallBack.onSuccess(msg);
                         }
-                        else{
-                            messageCallBack.onFailure(message);
+                        catch (Exception e){
+                            messageCallBack.onFailure(e.toString());
+                            e.printStackTrace();
                         }
-                    } catch (JSONException e) {
-                        messageCallBack.onFailure(e.toString());
+                    }
+                    else {
+                        messageCallBack.onFailure(msg);
                     }
                 }
                 else{
-                    messageCallBack.onFailure("登录失败！");
+                    messageCallBack.onFailure("网络请求错误！");
                 }
             }
         });
     }
 
-    public void register(MessageCallBack messageCallBack){
+    public void checkToken(String token, MessageCallBack messageCallBack){
+        OkHttpClient client = new OkHttpClient();
+        Gson gson = new Gson();
+        Request request = new Request.Builder()
+                .url(Tools.DOMAIN + Tools.checkTokenUrl + "?token=" + token)
+                .get()
+                .build();
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                messageCallBack.onFailure(e.toString());
+            }
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                if (response.isSuccessful() && response.body()!=null) {
+                    String responseBody = response.body().string();
+                    Type type = new com.google.gson.reflect.TypeToken<ApiResponse<Map<String, String>>>() {}.getType();
+                    ApiResponse<Map<String, String>> apiResponse = gson.fromJson(responseBody, type);
+                    int code = apiResponse.getCode();
+                    String msg = apiResponse.getMsg();
+                    if(code == 200){
+                        try {
+                            Map<String, String> data = apiResponse.getData();
+                            Tools.username = data.get("username");
+                            Tools.uid = data.get("uid");
+                            Tools.token = data.get("token");
+                            Tools.sendLog("username:" + Tools.username + " uid:" + Tools.uid + " token:" + Tools.token );
+                            messageCallBack.onSuccess(msg);
+                        }
+                        catch (Exception e){
+                            messageCallBack.onFailure(e.toString());
+                            e.printStackTrace();
+                        }
+                    }
+                    else {
+                        messageCallBack.onFailure(msg);
+                    }
+                }
+                else{
+                    Tools.sendLog(response.toString());
+                    messageCallBack.onFailure("网络请求错误！");
+                }
+            }
+        });
+    }
+
+    public void register(String username, String password, MessageCallBack messageCallBack){
         OkHttpClient client = new OkHttpClient();
         JSONObject jsonObject = new JSONObject();
         try{

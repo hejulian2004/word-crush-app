@@ -1,7 +1,6 @@
 package com.example.wordcrush.GameRecord;
 
-import com.example.wordcrush.Database.GameRecordDatabase.GameRecordEntity;
-import com.example.wordcrush.Word.Word;
+import com.example.wordcrush.Database.GameRecord.GameRecordEntity;
 
 import java.util.List;
 public class GameRecord {

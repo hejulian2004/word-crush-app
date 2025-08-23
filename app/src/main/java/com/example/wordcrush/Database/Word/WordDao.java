@@ -1,4 +1,4 @@
-package com.example.wordcrush.Database.WordDatabse;
+package com.example.wordcrush.Database.Word;
 
 import androidx.room.Dao;
 import androidx.room.Insert;

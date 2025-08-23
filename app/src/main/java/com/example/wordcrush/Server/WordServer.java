@@ -3,7 +3,7 @@ package com.example.wordcrush.Server;
 import android.content.Context;
 import android.content.res.AssetManager;
 import com.example.wordcrush.Database.AppDatabase;
-import com.example.wordcrush.Database.WordDatabse.WordEntity;
+import com.example.wordcrush.Database.Word.WordEntity;
 import com.example.wordcrush.Tools.MessageCallBack;
 import com.example.wordcrush.Tools.Tools;
 import com.example.wordcrush.Tools.WordCallBack;
@@ -12,7 +12,6 @@ import com.example.wordcrush.Word.Word;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import com.opencsv.CSVReader;
@@ -20,25 +19,32 @@ import com.opencsv.CSVReader;
 public class WordServer {
     private static List<Word> cachedWords = new ArrayList<>(); // 所有实例共享
     private static boolean isLoading = false;
-    private AppDatabase appDatabase;
-    private Context context;
     private String fileName = "wordbook.csv";
 
-    ExecutorService executorService;
-    public WordServer(Context context) {
-        this.context = context;
-        this.executorService = Executors.newSingleThreadExecutor();
-        this.appDatabase = AppDatabase.getDatabase(context);
-    }
+    private static volatile WordServer wordServer;
 
-    public void loadWordsAsync(WordCallBack wordCallBack) {
+    private WordServer(){}
+
+    public static WordServer getInstance(){
+        if(wordServer == null){
+            synchronized (WordServer.class){
+                if(wordServer == null){
+                    wordServer = new WordServer();
+                }
+            }
+        }
+        return wordServer;
+    }
+    ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+    public void loadWordsAsync(Context context, WordCallBack wordCallBack) {
         executorService.submit(() -> {
             if(isLoading){
                 wordCallBack.onSuccess(cachedWords);
                 Tools.sendLog("缓存已有单词，从缓存加载");
                 return;
             }
-            List<WordEntity> wordEntities = appDatabase.wordDao().getAllWords();
+            List<WordEntity> wordEntities = AppDatabase.getDatabase(context).wordDao().getAllWords();
             if(!wordEntities.isEmpty()){
                 List<Word> words = new ArrayList<>();
                 for(WordEntity word : wordEntities){
@@ -73,7 +79,7 @@ public class WordServer {
                 isLoading = true;
                 Tools.sendLog("从文件中加载单词");
                 //executorService.execute(() ->{
-                    appDatabase.wordDao().insertAll(wordEntityList);
+                    AppDatabase.getDatabase(context).wordDao().insertAll(wordEntityList);
                     Tools.sendLog("保存到数据库成功！");
                 //});
                 wordCallBack.onSuccess(words);
@@ -83,9 +89,9 @@ public class WordServer {
         });
     }
 
-    public void searchWordsAsync(String search, WordCallBack wordSearchCallBack){
+    public void searchWordsAsync(Context context, String search, WordCallBack wordSearchCallBack){
         executorService.submit(() ->{
-            List<WordEntity> wordEntities = appDatabase.wordDao().searchWords(search);
+            List<WordEntity> wordEntities = AppDatabase.getDatabase(context).wordDao().searchWords(search);
             if(wordEntities.isEmpty()){
                 wordSearchCallBack.onFailure("未查询到信息！");
                 Tools.sendLog("未查询到信息！");
@@ -99,9 +105,9 @@ public class WordServer {
         });
     }
 
-    public void searchWordsAsync(Boolean isMastered, WordCallBack wordSearchCallBack){
+    public void searchWordsAsync(Context context, Boolean isMastered, WordCallBack wordSearchCallBack){
         executorService.submit(() ->{
-            List<WordEntity> wordEntities = appDatabase.wordDao().searchWords(isMastered);
+            List<WordEntity> wordEntities = AppDatabase.getDatabase(context).wordDao().searchWords(isMastered);
             if(wordEntities.isEmpty()){
                 wordSearchCallBack.onFailure("未查询到信息！");
                 Tools.sendLog("未查询到信息！");
@@ -115,20 +121,20 @@ public class WordServer {
         });
     }
 
-    public void saveChange(Word word, MessageCallBack messageCallBack){
+    public void saveChange(Context context, Word word, MessageCallBack messageCallBack){
         executorService.submit(()->{
-           appDatabase.wordDao().update(new WordEntity(word));
+           AppDatabase.getDatabase(context).wordDao().update(new WordEntity(word));
            cachedWords.clear();
            isLoading = false;
            messageCallBack.onSuccess("保存成功！");
         });
     }
 
-    public void setMaster(String english, MessageCallBack messageCallBack){
+    public void setMaster(Context context, String english, MessageCallBack messageCallBack){
         executorService.submit(()->{
-            WordEntity entity = appDatabase.wordDao().getWordByEnglish(english);//先查询到这个单词
+            WordEntity entity = AppDatabase.getDatabase(context).wordDao().getWordByEnglish(english);//先查询到这个单词
             entity.setMaster(true);
-            saveChange(new Word(entity), new MessageCallBack() {
+            saveChange(context, new Word(entity), new MessageCallBack() {
                 @Override
                 public void onSuccess(String result) {
                     messageCallBack.onSuccess("单词修改为已掌握！" + entity.getEnglish());
@@ -142,10 +148,10 @@ public class WordServer {
         });
     }
 
-    public void setMaster(List<String> learnedWord){
+    public void setMaster(Context context, List<String> learnedWord){
         executorService.submit(()->{
             for(String english: learnedWord){
-                setMaster(english, new MessageCallBack() {
+                setMaster(context, english, new MessageCallBack() {
                     @Override
                     public void onSuccess(String result) {
                         Tools.sendLog(english + "已修改为掌握");
@@ -160,13 +166,13 @@ public class WordServer {
         });
     }
 
-    public void setAllWordNotMaster(){
+    public void setAllWordNotMaster(Context context){
         executorService.submit(()->{
-            List<WordEntity> entities = appDatabase.wordDao().getAllWords();
+            List<WordEntity> entities = AppDatabase.getDatabase(context).wordDao().getAllWords();
             for(WordEntity wordEntity: entities){
                 wordEntity.setMaster(false);
             }
-            appDatabase.wordDao().updateAll(entities);
+            AppDatabase.getDatabase(context).wordDao().updateAll(entities);
             isLoading = false;
         });
     }
