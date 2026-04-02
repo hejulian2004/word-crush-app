@@ -3,26 +3,17 @@ package com.example.wordcrush.Database.Word;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 
-import com.example.wordcrush.Word.Word;
-
 @Entity(tableName = "WORDS")
 public class WordEntity {
     @PrimaryKey
     private int id;
-
-    private String english, pronunciation, chinese;
+    private String english;
+    private String pronunciation;
+    private String chinese;
     private boolean isMaster;
     private int masterCount;
 
-    public WordEntity() {}
-
-    public WordEntity(Word word){
-        this.id = word.getId();
-        this.english = word.getEnglish();
-        this.pronunciation = word.getPronunciation();
-        this.chinese = word.getChinese();
-        this.isMaster = word.getIsMaster();
-        this.masterCount = word.getMasterCount();
+    public WordEntity() {
     }
 
     public int getId() {
@@ -31,14 +22,6 @@ public class WordEntity {
 
     public void setId(int id) {
         this.id = id;
-    }
-
-    public String getChinese() {
-        return chinese;
-    }
-
-    public void setChinese(String chinese) {
-        this.chinese = chinese;
     }
 
     public String getEnglish() {
@@ -55,6 +38,14 @@ public class WordEntity {
 
     public void setPronunciation(String pronunciation) {
         this.pronunciation = pronunciation;
+    }
+
+    public String getChinese() {
+        return chinese;
+    }
+
+    public void setChinese(String chinese) {
+        this.chinese = chinese;
     }
 
     public boolean isMaster() {

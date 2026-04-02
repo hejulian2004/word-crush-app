@@ -6,6 +6,7 @@ import androidx.room.Query;
 import androidx.room.Update;
 
 import java.util.List;
+import java.util.Set;
 
 @Dao
 public interface WordDao {
@@ -31,6 +32,9 @@ public interface WordDao {
     // 根据ID查询WordEntity
     @Query("SELECT * FROM WORDS WHERE id = :id")
     WordEntity getWordById(int id);
+
+    @Query("SELECT * FROM WORDS WHERE id IN (:ids)")
+    List<WordEntity> getWordsByIds(Set<Integer> ids);
 
     @Query("SELECT * FROM WORDS WHERE english = :english")
     WordEntity getWordByEnglish(String english);

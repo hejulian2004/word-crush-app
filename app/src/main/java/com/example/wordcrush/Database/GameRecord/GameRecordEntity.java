@@ -1,11 +1,7 @@
 package com.example.wordcrush.Database.GameRecord;
 
 import androidx.room.Entity;
-import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
-
-import com.example.wordcrush.GameRecord.GameRecord;
-import com.example.wordcrush.Tools.Tools;
 
 import java.util.List;
 
@@ -13,28 +9,13 @@ import java.util.List;
 public class GameRecordEntity {
     @PrimaryKey(autoGenerate = true)
     private int id;
-    private int gameType, score;
-    private String time, username;
-
+    private int gameType;
+    private int score;
+    private String time;
+    private String username;
     private List<String> learnedWords;
 
-    public GameRecordEntity(){}
-    @Ignore
-    public GameRecordEntity(int gameType, int score, String time, List<String> learnedWords){
-        this.username = Tools.username;
-        this.gameType = gameType;
-        this.score = score;
-        this.time = time;
-        this.learnedWords = learnedWords;
-    }
-
-    @Ignore
-    public GameRecordEntity(GameRecord gameRecord){
-        this.username = Tools.username;
-        this.gameType = gameRecord.getGameType();
-        this.score = gameRecord.getScore();
-        this.time = gameRecord.getTime();
-        this.learnedWords = gameRecord.getLearnedWords();
+    public GameRecordEntity() {
     }
 
     public int getId() {
@@ -69,19 +50,19 @@ public class GameRecordEntity {
         this.time = time;
     }
 
-    public List<String> getLearnedWords() {
-        return learnedWords;
-    }
-
-    public void setLearnedWords(List<String> learnedWords) {
-        this.learnedWords = learnedWords;
-    }
-
     public String getUsername() {
         return username;
     }
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    public List<String> getLearnedWords() {
+        return learnedWords;
+    }
+
+    public void setLearnedWords(List<String> learnedWords) {
+        this.learnedWords = learnedWords;
     }
 }

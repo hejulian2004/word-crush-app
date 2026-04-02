@@ -1,0 +1,33 @@
+package com.example.wordcrush.data.api
+
+import com.example.wordcrush.data.model.ApiResponse
+import com.example.wordcrush.data.model.LoginRequest
+import com.example.wordcrush.data.model.RegisterRequest
+import com.example.wordcrush.data.model.UserResponse
+import retrofit2.Response
+import retrofit2.http.Body
+import retrofit2.http.GET
+import retrofit2.http.POST
+import retrofit2.http.Query
+
+/**
+ * 账户相关 API 接口
+ */
+interface AccountApi {
+    
+    @POST("/api/user/login")
+    suspend fun login(@Body request: LoginRequest): Response<ApiResponse<UserResponse>>
+    
+    @GET("/api/user/checkToken")
+    suspend fun checkToken(@Query("token") token: String): Response<ApiResponse<UserResponse>>
+    
+    @POST("/api/user/register")
+    suspend fun register(@Body request: RegisterRequest): Response<ApiResponse<UserResponse>>
+    
+    @POST("/api/user/changePassword")
+    suspend fun changePassword(
+        @Query("username") username: String,
+        @Query("oldPassword") oldPassword: String,
+        @Query("newPassword") newPassword: String
+    ): Response<ApiResponse<Unit>>
+}

@@ -27,8 +27,11 @@ public interface GameRecordDao {
     @Query("SELECT gameType, score FROM GAME_RECORD WHERE username = :username")
     List<GameTypeScore> getGameTypeAndScore(String username);
 
-    @Query("DELETE FROM GAME_RECORD WHERE gameType = :gameType AND score = :score AND time = :time")
-    int deleteRecordByGameTypeScoreTime(int gameType, int score, String time);
+    @Query("DELETE FROM GAME_RECORD WHERE username = :username AND gameType = :gameType AND score = :score AND time = :time")
+    int deleteRecordByGameTypeScoreTime(String username, int gameType, int score, String time);
+
+    @Query("DELETE FROM GAME_RECORD WHERE username = :username")
+    void deleteAllRecordsByUsername(String username);
 
     @Query("DELETE FROM GAME_RECORD")
     void deleteAllRecords();
