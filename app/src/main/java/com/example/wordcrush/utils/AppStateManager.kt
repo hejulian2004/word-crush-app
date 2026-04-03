@@ -3,7 +3,10 @@ package com.example.wordcrush.utils
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -11,7 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 class AppStateManager @Inject constructor(
     @ApplicationContext context: android.content.Context
 ) {
-    var domain: String = "http://192.168.201.21:8080"
+    var domain: String = "http://hejulian.cn:8080"
         private set
 
     private val _username = MutableStateFlow("")
@@ -28,6 +31,9 @@ class AppStateManager @Inject constructor(
 
     private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
+
+    private val _sessionExpiredEvent = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val sessionExpiredEvent: SharedFlow<String> = _sessionExpiredEvent.asSharedFlow()
 
     fun setUserInfo(username: String, token: String, uid: String) {
         _username.value = username
@@ -46,6 +52,14 @@ class AppStateManager @Inject constructor(
         _uid.value = ""
         _avatarUrl.value = ""
         _isLoggedIn.value = false
+    }
+
+    fun notifySessionExpired(message: String = "Session expired. Please log in again.") {
+        val wasLoggedIn = _isLoggedIn.value || _token.value.isNotBlank()
+        clearUserInfo()
+        if (wasLoggedIn) {
+            _sessionExpiredEvent.tryEmit(message)
+        }
     }
 
     fun getFullUrl(path: String): String = "$domain$path"

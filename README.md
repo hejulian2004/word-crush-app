@@ -1,65 +1,9 @@
-# WordCrush
+# WordCrush App
 
-WordCrush 是一个基于 Android + Jetpack Compose 的英语单词学习应用。当前版本以本地词库学习为核心，包含每日固定词集、单词配对学习、限时模式、单词本检索、个人进度与本地/云端战绩同步。
-
-## 项目现状
-
-- UI 技术栈已经统一为 `Jetpack Compose`
-- 项目结构采用 `Single Activity + Navigation Compose + ViewModel + Repository`
-- 单词数据本地存储在 `Room`
-- 用户会话、每日学习计划、活动游戏会话存储在 `DataStore`
-- 网络接口通过 `Retrofit + OkHttp + Gson`
-- 当前默认登录方式为本地管理员账号：
-  - `admin`
-  - `123456`
-
-说明：
-- 登录和 token 校验目前由客户端本地管理员逻辑接管
-- 注册、改密、排行榜、游戏记录同步仍然依赖后端接口
-
-## 主要功能
-
-### 1. 每日固定词集
-
-- 用户可在 `Profile` 页面设置每日学习单词数量
-- 每天会从未掌握单词中随机抽取一批，生成当天固定词集
-- 当天词集生成后保持不变，不会因为反复进入页面而重新洗牌
-- 每个单词需要配对正确 `3` 次才会变为已掌握
-- 如果中途配错，该单词会重新回到未掌握状态
-
-### 2. Match / Timed 学习模式
-
-- `Classic`：无时间限制
-- `Timed`：倒计时模式
-- 配对成功后卡片会消失
-- 配对失败会显示错误反馈并扣除生命值
-- 可在页面顶部查看最近一次正确配对的单词，并手动标记为“没记住”
-- 游戏中途切页后会保持当前游戏状态
-- 应用重开后会优先恢复未结束的游戏会话
-
-### 3. Words 单词本
-
-- 支持关键字搜索
-- 支持 `All / Mastered / Learning` 筛选
-- 支持播放英式/美式发音
-- 支持单词状态标记：
-  - `Mark`
-  - `Reset`
-- 单词列表采用按需加载与局部刷新策略
-
-### 4. Profile
-
-- 展示当前用户信息
-- 展示 `Match / Timed` 分数汇总
-- 设置每日学习数量
-- 查看游戏记录
-- 触发云端同步
-- 修改密码
-- 退出登录
+WordCrush 是一个基于 Android + Jetpack Compose 的英语单词学习与配对闯关应用，包含单词本、闯关模式、计时模式、排行榜、游戏记录、头像上传、每日学习计划等能力。
 
 ## 技术栈
 
-- Android SDK 36
 - Kotlin
 - Jetpack Compose
 - Material 3
@@ -68,87 +12,158 @@ WordCrush 是一个基于 Android + Jetpack Compose 的英语单词学习应用�
 - ViewModel + StateFlow
 - Room
 - DataStore
-- Retrofit + OkHttp
-- Gson
-- OpenCSV
+- Retrofit + OkHttp + Gson
+
+## 当前登录与会话行为
+
+客户端现在已切换为服务端会话模式，不再依赖本地伪登录逻辑。
+
+- 登录成功后，保存服务端返回的 `token / username / uid`
+- 所有 Retrofit 请求都会自动附带 token
+- 自动携带两种请求头，兼容当前后端：
+  - `Authorization: Bearer <token>`
+  - `token: <token>`
+- 冷启动时会先调用 `checkToken` 校验本地 token
+- 如果 token 已失效，应用会清理本地会话并回到登录页
+- 如果运行过程中任意接口返回 `401`，也会立即自动退出登录并跳回登录页
+
+这意味着当服务端发生以下情况时，客户端会被踢回登录页：
+
+- token 过期
+- 同账号在其他设备重新登录
+- 用户改密导致旧 token 全部失效
+
+## 主要功能
+
+### 1. 登录与账号
+
+- 用户登录
+- 用户注册
+- token 校验
+- 修改密码
+- 上传头像
+- 退出登录
+
+### 2. Match / Timed 游戏
+
+- `Match` 模式
+- `Timed` 模式
+- 本地成绩保存
+- 成绩云端同步
+- 游戏记录查询与删除
+- 排行榜展示
+
+### 3. 单词本
+
+- 单词搜索
+- `All / Mastered / Learning` 过滤
+- 英式 / 美式发音播放
+- `Mark / Reset` 掌握状态切换
+- Room 本地持久化
+
+### 4. Profile
+
+- 展示用户名与头像
+- 展示 Match / Timed 最高分
+- 每日学习计划
+- 云端数据同步
+- 修改密码
+- 退出登录
 
 ## 目录结构
 
 ```text
-app/src/main/java/com/example/wordcrush/
-├── Activity/                 # MainActivity
-├── data/
-│   ├── api/                  # Retrofit API 定义
-│   ├── local/                # DataStore / PreferenceManager
-│   ├── model/                # 请求、响应、业务模型
-│   └── repository/           # 数据访问与业务逻辑
-├── Database/                 # Room 数据库、DAO、Entity、Converter
-├── di/                       # Hilt 注入
-├── ui/
-│   ├── compose/              # Compose 页面与通用组件
-│   ├── model/                # UI 模型
-│   └── viewmodel/            # ViewModel
-└── utils/                    # 应用状态、日志、工具类
+app/src/main/java/com/example/wordcrush
+├── Activity
+├── data
+│   ├── api
+│   ├── cache
+│   ├── local
+│   ├── model
+│   └── repository
+├── Database
+├── di
+├── ui
+│   ├── compose
+│   ├── model
+│   └── viewmodel
+└── utils
 ```
 
-## 关键文件
+## 关键实现位置
 
-- [MainActivity.kt](E:/coding/word-crush-app/app/src/main/java/com/example/wordcrush/Activity/MainActivity.kt)
-- [WordCrushApp.kt](E:/coding/word-crush-app/app/src/main/java/com/example/wordcrush/ui/compose/WordCrushApp.kt)
-- [MainFlow.kt](E:/coding/word-crush-app/app/src/main/java/com/example/wordcrush/ui/compose/MainFlow.kt)
-- [GameScreens.kt](E:/coding/word-crush-app/app/src/main/java/com/example/wordcrush/ui/compose/GameScreens.kt)
-- [SupportScreens.kt](E:/coding/word-crush-app/app/src/main/java/com/example/wordcrush/ui/compose/SupportScreens.kt)
-- [WordRepository.kt](E:/coding/word-crush-app/app/src/main/java/com/example/wordcrush/data/repository/WordRepository.kt)
-- [AccountRepository.kt](E:/coding/word-crush-app/app/src/main/java/com/example/wordcrush/data/repository/AccountRepository.kt)
-- [GameRecordRepository.kt](E:/coding/word-crush-app/app/src/main/java/com/example/wordcrush/data/repository/GameRecordRepository.kt)
-- [ActiveGameSessionManager.kt](E:/coding/word-crush-app/app/src/main/java/com/example/wordcrush/data/repository/ActiveGameSessionManager.kt)
+- `app/src/main/java/com/example/wordcrush/di/NetworkModule.kt`
+  - Retrofit / OkHttp 配置
+  - 统一注入 token
+  - 全局 `401` 自动退登
+- `app/src/main/java/com/example/wordcrush/data/repository/AccountRepository.kt`
+  - 登录、校验 token、注册、改密、头像上传、退出登录
+- `app/src/main/java/com/example/wordcrush/data/local/PreferenceManager.kt`
+  - DataStore 会话与用户信息存储
+- `app/src/main/java/com/example/wordcrush/utils/AppStateManager.kt`
+  - 内存态会话、头像、全局会话失效事件
+- `app/src/main/java/com/example/wordcrush/ui/viewmodel/MainViewModel.kt`
+  - 启动时 token 校验
+  - 会话失效后跳转登录页
 
-## 运行与构建
+## 网络联调约定
 
-### 环境要求
+当前客户端默认依赖以下服务端能力：
+
+- `POST /api/user/login`
+- `GET /api/user/checkToken`
+- `POST /api/user/register`
+- `POST /api/user/changePassword`
+- `POST /api/user/avatar`
+- `GET /api/user/avatar/{username}`
+- `POST /api/getTopNRecord`
+- `POST /api/addGameRecord`
+- `POST /api/deleteGameRecord`
+- `POST /api/getAllGameRecord`
+
+更详细的联调说明见：
+
+- [docs/backend-api.md](./docs/backend-api.md)
+
+## 编译与运行
+
+环境要求：
 
 - Android Studio
 - JDK 17
 - Android SDK 35/36
 
-### 常用命令
+常用命令：
 
 ```bash
 ./gradlew.bat :app:compileDebugKotlin
 ./gradlew.bat :app:assembleDebug
 ```
 
-调试包默认输出位置：
+调试 APK：
 
-- [app-debug.apk](E:/coding/word-crush-app/app/build/outputs/apk/debug/app-debug.apk)
+- `app/build/outputs/apk/debug/app-debug.apk`
 
-## 后端接口
+## 服务端地址
 
-当前客户端实际使用到的接口文档见：
+默认后端地址配置在：
 
-- [docs/backend-api.md](E:/coding/word-crush-app/docs/backend-api.md)
+- `app/src/main/java/com/example/wordcrush/utils/AppStateManager.kt`
 
-## 当前客户端与后端的边界
+当前默认值：
 
-### 仍然依赖后端
+- `http://192.168.201.21:8080`
 
-- 用户注册
-- 修改密码
-- 排行榜读取
-- 游戏记录上传
-- 游戏记录删除
-- 云端游戏记录全量同步
+如果后端地址变化，需要同步修改这里。
 
-### 当前由客户端本地处理
+## 数据存储
 
-- 登录
-- token 校验
-- 每日词集生成
-- 单词学习进度
-- 活动游戏会话恢复
-- 单词发音播放逻辑
+- 用户会话、头像地址、每日学习计划、活动游戏会话：`DataStore`
+- 单词、学习状态等本地结构化数据：`Room`
 
-## 备注
+## 会话相关说明
 
-- 当前默认服务地址在 [AppStateManager.kt](E:/coding/word-crush-app/app/src/main/java/com/example/wordcrush/utils/AppStateManager.kt) 中配置为 `http://192.168.201.21:8080`
-- 如果后端地址变化，需要同步修改该文件或扩展为可配置项
+- 登录成功后，客户端会把 token 写入 `DataStore`
+- 启动时会先校验 token，再决定进入主流程还是登录页
+- 全局网络层会在已登录请求收到 `401` 时自动清理会话
+- 由于服务端启用了单设备登录，账号在新设备登录后，旧设备会在下一次请求时自动退登

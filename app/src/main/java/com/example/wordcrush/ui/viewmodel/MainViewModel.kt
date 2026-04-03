@@ -8,6 +8,7 @@ import com.example.wordcrush.utils.AppStateManager
 import com.example.wordcrush.utils.AvatarUrlFactory
 import com.example.wordcrush.utils.LogUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,6 +28,18 @@ class MainViewModel @Inject constructor(
 
     private val _navigationEvent = MutableStateFlow<SessionNavigationEvent?>(null)
     val navigationEvent: StateFlow<SessionNavigationEvent?> = _navigationEvent.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            appStateManager.sessionExpiredEvent.collectLatest { message ->
+                _navigationEvent.value = SessionNavigationEvent.NavigateToLogin
+                _uiState.value = MainUiState(
+                    error = message,
+                    hasCheckedSession = true
+                )
+            }
+        }
+    }
 
     fun validateTokenAndInit() {
         viewModelScope.launch {

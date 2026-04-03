@@ -2,11 +2,15 @@ package com.example.wordcrush.di
 
 import com.example.wordcrush.data.api.AccountApi
 import com.example.wordcrush.data.api.GameRecordApi
+import com.example.wordcrush.data.cache.AvatarCacheStore
+import com.example.wordcrush.data.local.PreferenceManager
 import com.example.wordcrush.utils.AppStateManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -20,12 +24,36 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
+    fun provideOkHttpClient(
+        appStateManager: AppStateManager,
+        preferenceManager: PreferenceManager,
+        avatarCacheStore: AvatarCacheStore
+    ): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
 
         return OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val token = appStateManager.token.value.ifBlank {
+                    runBlocking { preferenceManager.tokenFlow.firstOrNull().orEmpty() }
+                }
+
+                val requestBuilder = chain.request().newBuilder()
+                if (token.isNotBlank()) {
+                    requestBuilder.header("Authorization", "Bearer $token")
+                    requestBuilder.header("token", token)
+                }
+                val response = chain.proceed(requestBuilder.build())
+                if (token.isNotBlank() && response.code == 401) {
+                    runBlocking {
+                        preferenceManager.clear()
+                    }
+                    avatarCacheStore.clear()
+                    appStateManager.notifySessionExpired()
+                }
+                response
+            }
             .addInterceptor(logging)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
