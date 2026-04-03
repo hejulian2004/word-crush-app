@@ -1,4 +1,4 @@
-package com.example.wordcrush.data.model
+﻿package com.example.wordcrush.data.model
 
 import com.google.gson.annotations.SerializedName
 
@@ -53,7 +53,9 @@ data class RemoteRankingItem(
     @SerializedName("score")
     val score: Int,
     @SerializedName("time")
-    val time: String
+    val time: String,
+    @SerializedName("avatarVersion")
+    val avatarVersion: Long = 0L
 )
 
 data class RemoteGameRecord(

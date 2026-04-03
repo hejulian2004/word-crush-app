@@ -1,4 +1,4 @@
-package com.example.wordcrush.ui.compose
+﻿package com.example.wordcrush.ui.compose
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +31,7 @@ import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -114,27 +115,69 @@ internal fun AuthScreen(
 internal fun ScreenScaffold(
     title: String,
     onBack: () -> Unit,
+    scrollable: Boolean = true,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val dims = appDimens()
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = dims.pagePadding)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(dims.sectionSpacing)
-    ) {
-        TopAppBar(
-            title = { Text(title) },
-            navigationIcon = {
-                TextButton(onClick = onBack) {
-                    Text("Back")
-                }
+    val appBarColors = TopAppBarDefaults.topAppBarColors(
+        containerColor = Color.Transparent,
+        scrolledContainerColor = Color.Transparent,
+        navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
+        titleContentColor = MaterialTheme.colorScheme.onBackground,
+        actionIconContentColor = MaterialTheme.colorScheme.onBackground
+    )
+
+    if (scrollable) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .verticalScroll(rememberScrollState())
+        ) {
+            TopAppBar(
+                title = { Text(title) },
+                navigationIcon = {
+                    TextButton(onClick = onBack) {
+                        Text("Back")
+                    }
+                },
+                colors = appBarColors
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = dims.pagePadding),
+                verticalArrangement = Arrangement.spacedBy(dims.sectionSpacing)
+            ) {
+                content()
+                Spacer(modifier = Modifier.height(dims.scaled(24.dp)))
             }
-        )
-        content()
-        Spacer(modifier = Modifier.height(dims.scaled(24.dp)))
+        }
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            TopAppBar(
+                title = { Text(title) },
+                navigationIcon = {
+                    TextButton(onClick = onBack) {
+                        Text("Back")
+                    }
+                },
+                colors = appBarColors
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(horizontal = dims.pagePadding),
+                verticalArrangement = Arrangement.spacedBy(dims.sectionSpacing)
+            ) {
+                content()
+            }
+        }
     }
 }
 
@@ -303,3 +346,5 @@ internal fun ErrorText(message: String) {
         color = MaterialTheme.colorScheme.error
     )
 }
+
+

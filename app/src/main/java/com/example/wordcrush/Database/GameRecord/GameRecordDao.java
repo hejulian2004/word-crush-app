@@ -4,6 +4,7 @@ import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.Query;
 import androidx.room.Update;
+import androidx.room.Transaction;
 
 import java.util.List;
 
@@ -21,7 +22,7 @@ public interface GameRecordDao {
     @Update
     void updateAll(List<GameRecordEntity> gameRecordEntities);
 
-    @Query("SELECT * FROM GAME_RECORD WHERE username = :username ORDER BY ID DESC")
+    @Query("SELECT * FROM GAME_RECORD WHERE username = :username ORDER BY time DESC, id DESC")
     List<GameRecordEntity> getAllGameRecords(String username);
 
     @Query("SELECT gameType, score FROM GAME_RECORD WHERE username = :username")
@@ -33,9 +34,18 @@ public interface GameRecordDao {
     @Query("DELETE FROM GAME_RECORD WHERE username = :username")
     void deleteAllRecordsByUsername(String username);
 
+    @Transaction
+    default void replaceRecordsForUsername(String username, List<GameRecordEntity> records) {
+        deleteAllRecordsByUsername(username);
+        if (records != null && !records.isEmpty()) {
+            insertAllGameRecord(records);
+        }
+    }
+
     @Query("DELETE FROM GAME_RECORD")
     void deleteAllRecords();
 
     @Insert
     void insertAllRecords(List<GameRecordEntity> wordEntities);
 }
+

@@ -3,12 +3,14 @@ package com.example.wordcrush.data.repository
 import com.example.wordcrush.Database.GameRecord.GameRecordDao
 import com.example.wordcrush.Database.GameRecord.GameRecordEntity
 import com.example.wordcrush.data.api.GameRecordApi
+import com.example.wordcrush.data.cache.AvatarCacheStore
 import com.example.wordcrush.data.local.PreferenceManager
 import com.example.wordcrush.data.model.DeleteGameRecordRequest
 import com.example.wordcrush.data.model.GameRecordItem
 import com.example.wordcrush.data.model.RankingItem
 import com.example.wordcrush.data.model.RankingRequest
 import com.example.wordcrush.data.model.RemoteGameRecord
+import com.example.wordcrush.data.model.RemoteRankingItem
 import com.example.wordcrush.data.model.SaveGameRecordRequest
 import com.example.wordcrush.data.model.ScoreSummary
 import com.example.wordcrush.data.model.UsernameRequest
@@ -25,8 +27,19 @@ import kotlinx.coroutines.withContext
 class GameRecordRepository @Inject constructor(
     private val gameRecordDao: GameRecordDao,
     private val gameRecordApi: GameRecordApi,
-    private val preferenceManager: PreferenceManager
+    private val preferenceManager: PreferenceManager,
+    private val avatarCacheStore: AvatarCacheStore
 ) {
+    private companion object {
+        const val MAX_RANKING_CACHE_ENTRIES = 6
+        val GAME_TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH:mm:ss.SSS")
+    }
+
+    private val rankingCache = object : LinkedHashMap<String, RankingCacheEntry>(MAX_RANKING_CACHE_ENTRIES, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, RankingCacheEntry>?): Boolean {
+            return size > MAX_RANKING_CACHE_ENTRIES
+        }
+    }
 
     suspend fun saveLocalRecord(
         gameType: Int,
@@ -35,15 +48,16 @@ class GameRecordRepository @Inject constructor(
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val username = currentUsername() ?: throw IllegalStateException("No logged-in user found.")
-            val time = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HH:mm:ss.SSS"))
-            val entity = GameRecordEntity().apply {
-                this.username = username
-                this.gameType = gameType
-                this.score = score
-                this.time = time
-                this.learnedWords = learnedWords
-            }
-            gameRecordDao.insertGameRecord(entity)
+            val time = LocalDateTime.now().format(GAME_TIME_FORMATTER)
+            gameRecordDao.insertGameRecord(
+                buildLocalEntity(
+                    username = username,
+                    gameType = gameType,
+                    score = score,
+                    time = time,
+                    learnedWords = learnedWords
+                )
+            )
         }
     }
 
@@ -52,20 +66,35 @@ class GameRecordRepository @Inject constructor(
         gameRecordDao.getAllGameRecords(username).map { entity -> entity.toGameRecordItem() }
     }
 
+    suspend fun getCachedRanking(gameType: Int, limit: Int): List<RankingItem> = withContext(Dispatchers.IO) {
+        synchronized(rankingCache) {
+            rankingCache[rankingCacheKey(gameType, limit)]?.items
+        }.orEmpty().toRankingItems()
+    }
+
     suspend fun getRanking(gameType: Int, limit: Int): Result<List<RankingItem>> = withContext(Dispatchers.IO) {
         runCatching {
+            val cacheKey = rankingCacheKey(gameType, limit)
+            val cachedEntry = synchronized(rankingCache) { rankingCache[cacheKey] }
             val response = gameRecordApi.getTopRankings(RankingRequest(gameType, limit))
             val body = response.body()
             if (!response.isSuccessful || body == null || !body.isSuccess()) {
+                cachedEntry?.let { return@runCatching it.items.toRankingItems() }
                 throw IllegalStateException("Unable to fetch ranking data.")
             }
-            body.message.orEmpty().map { item ->
-                RankingItem(
-                    username = item.username,
-                    score = item.score,
-                    time = item.time
-                )
+
+            val remoteItems = body.message.orEmpty()
+            val signature = remoteItems.toSignature()
+            val effectiveItems = synchronized(rankingCache) {
+                val current = rankingCache[cacheKey]
+                if (current != null && current.signature == signature) {
+                    current.items
+                } else {
+                    rankingCache[cacheKey] = RankingCacheEntry(signature, remoteItems)
+                    remoteItems
+                }
             }
+            effectiveItems.toRankingItems()
         }
     }
 
@@ -84,31 +113,30 @@ class GameRecordRepository @Inject constructor(
         gameType: Int,
         score: Int,
         learnedWords: List<String>
-    ): Result<Unit> = withContext(Dispatchers.IO) {
+    ): Result<SaveRecordResult> = withContext(Dispatchers.IO) {
         runCatching {
             val username = currentUsername() ?: throw IllegalStateException("No logged-in user found.")
-            val time = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HH:mm:ss.SSS"))
-            val entity = GameRecordEntity().apply {
-                this.username = username
-                this.gameType = gameType
-                this.score = score
-                this.time = time
-                this.learnedWords = learnedWords
-            }
+            val time = LocalDateTime.now().format(GAME_TIME_FORMATTER)
+            val entity = buildLocalEntity(
+                username = username,
+                gameType = gameType,
+                score = score,
+                time = time,
+                learnedWords = learnedWords
+            )
             gameRecordDao.insertGameRecord(entity)
 
-            val response = gameRecordApi.saveGameRecord(
-                SaveGameRecordRequest(
-                    username = username,
-                    gameType = gameType,
-                    score = score,
-                    time = time,
-                    learnedWords = learnedWords
-                )
-            )
-            if (!response.isSuccessful || response.body() == null || !response.body()!!.isSuccess()) {
-                LogUtils.w("Remote record sync failed after local save")
+            val syncedToCloud = runCatching {
+                uploadRecordToCloud(entity.toSaveRequest())
+            }.getOrElse { error ->
+                LogUtils.w("Remote record sync failed after local save: ${error.message}")
+                false
             }
+
+            SaveRecordResult(
+                syncedToCloud = syncedToCloud,
+                savedLocally = true
+            )
         }
     }
 
@@ -139,25 +167,93 @@ class GameRecordRepository @Inject constructor(
         }
     }
 
-    suspend fun syncFromCloud(): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun syncFromCloud(): Result<CloudSyncResult> = withContext(Dispatchers.IO) {
         runCatching {
             val username = currentUsername() ?: throw IllegalStateException("No logged-in user found.")
-            val response = gameRecordApi.getAllGameRecords(UsernameRequest(username))
-            val body = response.body()
-            if (!response.isSuccessful || body == null || !body.isSuccess()) {
-                throw IllegalStateException("Cloud sync failed.")
-            }
-
-            val remoteEntities = body.message.orEmpty().map { remote -> remote.toGameRecordEntity() }
             val localEntities = gameRecordDao.getAllGameRecords(username)
-            if (localEntities.isSameRecordSetAs(remoteEntities)) {
-                return@runCatching
+            var remoteEntities = fetchRemoteEntities(username)
+            val remoteSnapshots = remoteEntities.toSnapshots().toSet()
+            val missingLocalEntities = localEntities.filter { entity ->
+                entity.toSnapshot() !in remoteSnapshots
             }
 
-            gameRecordDao.deleteAllRecordsByUsername(username)
-            if (remoteEntities.isNotEmpty()) {
-                gameRecordDao.insertAllGameRecord(remoteEntities)
+            var uploadedCount = 0
+            missingLocalEntities.forEach { entity ->
+                if (!uploadRecordToCloud(entity.toSaveRequest())) {
+                    throw IllegalStateException("Cloud sync failed while uploading local records.")
+                }
+                uploadedCount++
             }
+
+            if (uploadedCount > 0) {
+                remoteEntities = fetchRemoteEntities(username)
+            }
+
+            val localSnapshots = localEntities.toSnapshots()
+            val remoteSnapshotsAfterUpload = remoteEntities.toSnapshots()
+            val replacedLocalDatabase = localSnapshots != remoteSnapshotsAfterUpload
+            if (replacedLocalDatabase) {
+                gameRecordDao.replaceRecordsForUsername(username, remoteEntities)
+            }
+
+            CloudSyncResult(
+                uploadedCount = uploadedCount,
+                replacedLocalDatabase = replacedLocalDatabase,
+                localRecordCount = remoteEntities.size
+            )
+        }
+    }
+
+    private suspend fun fetchRemoteEntities(username: String): List<GameRecordEntity> {
+        val response = gameRecordApi.getAllGameRecords(UsernameRequest(username))
+        val body = response.body()
+        if (!response.isSuccessful || body == null || !body.isSuccess()) {
+            throw IllegalStateException("Cloud sync failed.")
+        }
+        return body.message.orEmpty().map { remote -> remote.toGameRecordEntity() }
+    }
+
+    private suspend fun uploadRecordToCloud(request: SaveGameRecordRequest): Boolean {
+        val response = gameRecordApi.saveGameRecord(request)
+        val body = response.body()
+        return response.isSuccessful && body != null && body.isSuccess()
+    }
+
+    private fun buildLocalEntity(
+        username: String,
+        gameType: Int,
+        score: Int,
+        time: String,
+        learnedWords: List<String>
+    ): GameRecordEntity {
+        return GameRecordEntity().apply {
+            this.username = username
+            this.gameType = gameType
+            this.score = score
+            this.time = time
+            this.learnedWords = learnedWords
+        }
+    }
+
+    private fun rankingCacheKey(gameType: Int, limit: Int): String {
+        return "$gameType:$limit"
+    }
+
+    private fun List<RemoteRankingItem>.toSignature(): String {
+        return joinToString(separator = "|") { item ->
+            "${item.username}:${item.score}:${item.time}:${item.avatarVersion}"
+        }
+    }
+
+    private fun List<RemoteRankingItem>.toRankingItems(): List<RankingItem> {
+        return map { item ->
+            RankingItem(
+                username = item.username,
+                score = item.score,
+                time = item.time,
+                avatarUrl = avatarCacheStore.resolve(item.username, item.avatarVersion),
+                avatarVersion = item.avatarVersion
+            )
         }
     }
 
@@ -165,6 +261,22 @@ class GameRecordRepository @Inject constructor(
         return preferenceManager.usernameFlow.firstOrNull()?.takeIf { it.isNotBlank() }
     }
 }
+
+data class SaveRecordResult(
+    val syncedToCloud: Boolean,
+    val savedLocally: Boolean
+)
+
+data class CloudSyncResult(
+    val uploadedCount: Int,
+    val replacedLocalDatabase: Boolean,
+    val localRecordCount: Int
+)
+
+private data class RankingCacheEntry(
+    val signature: String,
+    val items: List<RemoteRankingItem>
+)
 
 private data class RecordSnapshot(
     val username: String,
@@ -174,22 +286,22 @@ private data class RecordSnapshot(
     val learnedWords: List<String>
 )
 
-private fun List<GameRecordEntity>.isSameRecordSetAs(other: List<GameRecordEntity>): Boolean {
-    return this.toSnapshots() == other.toSnapshots()
-}
-
 private fun List<GameRecordEntity>.toSnapshots(): List<RecordSnapshot> {
     return map { entity ->
-        RecordSnapshot(
-            username = entity.username,
-            gameType = entity.gameType,
-            score = entity.score,
-            time = entity.time,
-            learnedWords = entity.learnedWords.orEmpty()
-        )
+        entity.toSnapshot()
     }.sortedBy { snapshot ->
         "${snapshot.username}|${snapshot.gameType}|${snapshot.score}|${snapshot.time}|${snapshot.learnedWords.joinToString(",")}"
     }
+}
+
+private fun GameRecordEntity.toSnapshot(): RecordSnapshot {
+    return RecordSnapshot(
+        username = username,
+        gameType = gameType,
+        score = score,
+        time = time,
+        learnedWords = learnedWords.orEmpty()
+    )
 }
 
 private fun GameRecordEntity.toGameRecordItem(): GameRecordItem {
@@ -198,6 +310,16 @@ private fun GameRecordEntity.toGameRecordItem(): GameRecordItem {
         gameType = gameType,
         time = time,
         score = score,
+        learnedWords = learnedWords.orEmpty()
+    )
+}
+
+private fun GameRecordEntity.toSaveRequest(): SaveGameRecordRequest {
+    return SaveGameRecordRequest(
+        username = username,
+        gameType = gameType,
+        score = score,
+        time = time,
         learnedWords = learnedWords.orEmpty()
     )
 }

@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.wordcrush.data.model.ActiveGameSession
 import com.example.wordcrush.data.model.DailyLearningPlan
 import com.example.wordcrush.data.local.PreferenceManager
+import com.example.wordcrush.data.model.RecordWordProgress
+import com.example.wordcrush.data.model.RecordWordProgressCodec
 import com.example.wordcrush.data.model.WordItem
 import com.example.wordcrush.data.repository.ActiveGameSessionManager
 import com.example.wordcrush.data.repository.GameRecordRepository
@@ -48,7 +50,7 @@ class BreakthroughViewModel @Inject constructor(
     private var words: List<WordItem> = emptyList()
     private var roundWords: Map<Int, WordItem> = emptyMap()
     private var cursor = 0
-    private val learnedWords = mutableListOf<String>()
+    private val recordWordProgress = linkedMapOf<String, RecordWordProgress>()
     private val learnedWordDetails = mutableListOf<WordItem>()
 
     init {
@@ -105,8 +107,8 @@ class BreakthroughViewModel @Inject constructor(
 
             viewModelScope.launch {
                 val updatedWord = wordRepository.recordCorrectMatch(matchedWord.id)
+                updateRecordedWordProgress(matchedWord, updatedWord)
                 if (updatedWord != null && updatedWord.isMastered && !matchedWord.isMastered) {
-                    learnedWords += updatedWord.english
                     learnedWordDetails += updatedWord
                 }
                 _uiState.value = _uiState.value.copy(latestMatchedWord = updatedWord ?: matchedWord)
@@ -156,7 +158,7 @@ class BreakthroughViewModel @Inject constructor(
     }
 
     fun resetForNextGame(clearLearnedSummaries: Boolean = true) {
-        learnedWords.clear()
+        recordWordProgress.clear()
         learnedWordDetails.clear()
         _uiState.value = _uiState.value.copy(
             hasStarted = false,
@@ -181,12 +183,19 @@ class BreakthroughViewModel @Inject constructor(
     fun endGameEarly() {
         viewModelScope.launch {
             val score = _uiState.value.score
-            val learned = learnedWords.toList()
+            val learned = serializeRecordWordProgress()
             val learnedSummaries = buildLearnedWordSummaries(learnedWordDetails)
             _uiState.value = _uiState.value.copy(learnedWordSummaries = learnedSummaries)
             resetForNextGame(clearLearnedSummaries = false)
-            gameRecordRepository.saveRecord(GAME_TYPE, score, learned)
-            _event.emit(MatchGameEvent.Message("Current classic game has been saved."))
+            val result = gameRecordRepository.saveRecord(GAME_TYPE, score, learned)
+            val message = result.getOrNull()?.let { saveResult ->
+                if (saveResult.syncedToCloud) {
+                    "Current classic game has been saved and synced to cloud."
+                } else {
+                    "Current classic game is saved locally. Cloud upload failed."
+                }
+            } ?: "Current classic game is saved locally. Cloud upload failed."
+            _event.emit(MatchGameEvent.Message(message))
         }
     }
 
@@ -208,7 +217,7 @@ class BreakthroughViewModel @Inject constructor(
         val latestWord = _uiState.value.latestMatchedWord ?: return
         viewModelScope.launch {
             wordRepository.updateWordMastered(latestWord.id, false)
-            learnedWords.remove(latestWord.english)
+            downgradeRecordedWordProgress(latestWord)
             learnedWordDetails.removeAll { it.id == latestWord.id }
             _uiState.value = _uiState.value.copy(latestMatchedWord = null)
             updatePlanSummary(wordRepository.getDailyLearningPlan())
@@ -235,7 +244,7 @@ class BreakthroughViewModel @Inject constructor(
 
     private suspend fun prepareGame() {
         val plan = wordRepository.getDailyLearningPlan()
-        learnedWords.clear()
+        recordWordProgress.clear()
         learnedWordDetails.clear()
         cursor = 0
         updatePlanSummary(plan)
@@ -284,7 +293,7 @@ class BreakthroughViewModel @Inject constructor(
     private fun finishGame(message: String = "Game over.") {
         viewModelScope.launch {
             val score = _uiState.value.score
-            val learned = learnedWords.toList()
+            val learned = serializeRecordWordProgress()
             val learnedSummaries = buildLearnedWordSummaries(learnedWordDetails)
             activeGameSessionManager.clearSession(GAME_TYPE)
             _uiState.value = _uiState.value.copy(
@@ -333,8 +342,10 @@ class BreakthroughViewModel @Inject constructor(
         words = plan.activeWords
         roundWords = session.roundWordIds.mapNotNull(wordsById::get).associateBy { it.id }
         cursor = session.cursor
-        learnedWords.clear()
-        learnedWords += session.learnedWords
+        recordWordProgress.clear()
+        RecordWordProgressCodec.decodeAll(session.learnedWords).forEach { progress ->
+            recordWordProgress[progress.english] = progress
+        }
         learnedWordDetails.clear()
         learnedWordDetails += session.learnedWordIds.mapNotNull(wordsById::get)
 
@@ -352,6 +363,27 @@ class BreakthroughViewModel @Inject constructor(
         )
     }
 
+    private fun updateRecordedWordProgress(matchedWord: WordItem, updatedWord: WordItem?) {
+        val previous = recordWordProgress[matchedWord.english]
+        val nextCorrectCount = ((previous?.correctCount ?: 0) + 1).coerceAtMost(3)
+        recordWordProgress[matchedWord.english] = RecordWordProgress(
+            english = matchedWord.english,
+            correctCount = nextCorrectCount,
+            isLearned = updatedWord?.isMastered == true || previous?.isLearned == true
+        )
+    }
+
+    private fun downgradeRecordedWordProgress(word: WordItem) {
+        val current = recordWordProgress[word.english] ?: return
+        recordWordProgress[word.english] = current.copy(
+            correctCount = current.correctCount.coerceAtMost(2).coerceAtLeast(1),
+            isLearned = false
+        )
+    }
+
+    private fun serializeRecordWordProgress(): List<String> {
+        return RecordWordProgressCodec.encodeAll(recordWordProgress.values)
+    }
     private fun publishSessionAsync() {
         viewModelScope.launch {
             publishSession()
@@ -363,7 +395,7 @@ class BreakthroughViewModel @Inject constructor(
             ActiveGameSession(
                 gameType = GAME_TYPE,
                 score = _uiState.value.score,
-                learnedWords = learnedWords.toList(),
+                learnedWords = serializeRecordWordProgress(),
                 hearts = _uiState.value.hearts,
                 cards = _uiState.value.cards.map { it.toSnapshot() },
                 roundWordIds = roundWords.values.map { it.id },
@@ -396,3 +428,5 @@ data class BreakthroughUiState(
     val gameOverScore: Int? = null,
     val learnedWordSummaries: List<String> = emptyList()
 )
+
+

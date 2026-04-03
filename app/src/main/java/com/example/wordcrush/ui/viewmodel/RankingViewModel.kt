@@ -1,4 +1,4 @@
-package com.example.wordcrush.ui.viewmodel
+﻿package com.example.wordcrush.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -21,12 +21,21 @@ class RankingViewModel @Inject constructor(
 
     fun loadRankings(gameType: Int, limit: Int = 50) {
         viewModelScope.launch {
-            _uiState.value = RankingUiState(isLoading = true)
+            val cachedRankings = gameRecordRepository.getCachedRanking(gameType, limit)
+            _uiState.value = if (cachedRankings.isEmpty()) {
+                RankingUiState(isLoading = true)
+            } else {
+                RankingUiState(rankings = cachedRankings)
+            }
+
             val result = gameRecordRepository.getRanking(gameType, limit)
             _uiState.value = result.fold(
                 onSuccess = { rankings -> RankingUiState(rankings = rankings) },
                 onFailure = { error ->
-                    RankingUiState(error = error.message ?: "Unable to load ranking data.")
+                    RankingUiState(
+                        rankings = cachedRankings,
+                        error = error.message ?: "Unable to load ranking data."
+                    )
                 }
             )
         }

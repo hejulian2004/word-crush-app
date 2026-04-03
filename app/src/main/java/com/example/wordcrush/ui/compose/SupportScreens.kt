@@ -1,5 +1,7 @@
-package com.example.wordcrush.ui.compose
+﻿package com.example.wordcrush.ui.compose
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -203,6 +205,11 @@ internal fun HomeRoute(
     var oldPassword by rememberSaveable { mutableStateOf("") }
     var newPassword by rememberSaveable { mutableStateOf("") }
     var confirmPassword by rememberSaveable { mutableStateOf("") }
+    val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            viewModel.uploadAvatar(uri)
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.messageEvent.collect(onShowMessage)
@@ -239,17 +246,30 @@ internal fun HomeRoute(
                     .padding(dims.cardPaddingLarge),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                AvatarBadge(
-                    label = uiState.username.ifBlank { "Guest" }.take(1).uppercase(),
+                UserAvatar(
+                    imageUrl = uiState.avatarUrl,
+                    fallbackLabel = uiState.username.ifBlank { "Guest" }.take(1).uppercase(),
                     size = dims.avatarSize
                 )
                 Spacer(modifier = Modifier.width(dims.pagePadding))
-                Column {
-                    Text(
-                        text = uiState.username.ifBlank { "Guest" },
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                Column(verticalArrangement = Arrangement.spacedBy(dims.tinySpacing)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(dims.controlSpacing)
+                    ) {
+                        Text(
+                            text = uiState.username.ifBlank { "Guest" },
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        OutlinedButton(
+                            onClick = { avatarPicker.launch("image/*") },
+                            enabled = !uiState.isUploadingAvatar,
+                            modifier = Modifier.height(dims.scaled(36.dp))
+                        ) {
+                            Text(if (uiState.isUploadingAvatar) "Uploading..." else "Upload")
+                        }
+                    }
                     Text(
                         text = "Learning profile",
                         style = MaterialTheme.typography.bodyMedium,
@@ -471,7 +491,8 @@ internal fun RankingRoute(
 
     ScreenScaffold(
         title = if (gameType == 0) "Match ranking" else "Timed ranking",
-        onBack = onBack
+        onBack = onBack,
+        scrollable = false
     ) {
         when {
             uiState.isLoading -> LoadingSection()
@@ -479,7 +500,10 @@ internal fun RankingRoute(
                 title = "No ranking data",
                 message = "Play a few rounds and sync the leaderboard again."
             )
-            else -> RankingList(uiState.rankings)
+            else -> RankingContent(
+                rankings = uiState.rankings,
+                gameType = gameType
+            )
         }
     }
 }
@@ -512,7 +536,8 @@ internal fun GameRecordRoute(
 
     ScreenScaffold(
         title = "Game records",
-        onBack = onBack
+        onBack = onBack,
+        scrollable = false
     ) {
         when {
             uiState.isLoading -> LoadingSection()
@@ -520,18 +545,14 @@ internal fun GameRecordRoute(
                 title = "No local records",
                 message = "Finish a game to create your first record."
             )
-            else -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                uiState.records.forEach { record ->
-                    RecordCard(
-                        record = record,
-                        expanded = expandedRecordId == record.id,
-                        onToggleExpanded = {
-                            expandedRecordId = if (expandedRecordId == record.id) null else record.id
-                        },
-                        onDelete = { pendingDelete = record }
-                    )
-                }
-            }
+            else -> GameRecordContent(
+                records = uiState.records,
+                expandedRecordId = expandedRecordId,
+                onToggleExpanded = { recordId ->
+                    expandedRecordId = if (expandedRecordId == recordId) null else recordId
+                },
+                onDelete = { record -> pendingDelete = record }
+            )
         }
     }
 
@@ -632,37 +653,304 @@ private fun WordItemCard(
 }
 
 @Composable
-private fun RankingList(rankings: List<RankingItem>) {
+private fun RankingContent(
+    rankings: List<RankingItem>,
+    gameType: Int
+) {
     val dims = appDimens()
-    Column(verticalArrangement = Arrangement.spacedBy(dims.controlSpacing)) {
-        rankings.forEachIndexed { index, item ->
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(dims.cardPadding),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    AvatarBadge(label = (index + 1).toString(), size = dims.smallAvatarSize)
-                    Spacer(modifier = Modifier.width(dims.scaled(14.dp)))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = item.username,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = item.time,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(dims.sectionSpacing)
+    ) {
+        RankingOverviewCard(rankings = rankings, gameType = gameType)
+        RankingList(rankings = rankings, modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun RankingOverviewCard(
+    rankings: List<RankingItem>,
+    gameType: Int
+) {
+    val dims = appDimens()
+    val topScore = rankings.maxOfOrNull { it.score } ?: 0
+    val title = if (gameType == 0) "Match Challenge" else "Timed Match"
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(dims.cardPaddingLarge),
+            verticalArrangement = Arrangement.spacedBy(dims.controlSpacing)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Top players are ranked by best score, with earlier finish times breaking ties.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(dims.controlSpacing)
+            ) {
+                StatCard(
+                    title = "Players",
+                    value = rankings.size.toString(),
+                    modifier = Modifier.weight(1f)
+                )
+                StatCard(
+                    title = "Top score",
+                    value = topScore.toString(),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RankingList(
+    rankings: List<RankingItem>,
+    modifier: Modifier = Modifier
+) {
+    val dims = appDimens()
+    LazyColumn(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(dims.controlSpacing)
+    ) {
+        items(
+            count = rankings.size,
+            key = { index ->
+                val item = rankings[index]
+                "${item.username}-${item.time}-${item.avatarVersion}-$index"
+            }
+        ) { index ->
+            val item = rankings[index]
+            if (index < 3) {
+                RankingHighlightCard(index = index, item = item)
+            } else {
+                RankingStandardCard(index = index, item = item)
+            }
+        }
+    }
+}
+
+@Composable
+private fun RankingHighlightCard(
+    index: Int,
+    item: RankingItem
+) {
+    val dims = appDimens()
+    val containerColor = when (index) {
+        0 -> MaterialTheme.colorScheme.primaryContainer
+        1 -> MaterialTheme.colorScheme.secondaryContainer
+        else -> MaterialTheme.colorScheme.tertiaryContainer
+    }
+    val onContainerColor = when (index) {
+        0 -> MaterialTheme.colorScheme.onPrimaryContainer
+        1 -> MaterialTheme.colorScheme.onSecondaryContainer
+        else -> MaterialTheme.colorScheme.onTertiaryContainer
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = containerColor)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(dims.cardPaddingLarge),
+            verticalArrangement = Arrangement.spacedBy(dims.controlSpacing)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Rank #${index + 1}",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = onContainerColor.copy(alpha = 0.8f)
+                )
+                Text(
+                    text = item.score.toString(),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = onContainerColor
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                UserAvatar(
+                    imageUrl = item.avatarUrl,
+                    fallbackLabel = item.username.take(1).uppercase(),
+                    size = dims.avatarSize
+                )
+                Spacer(modifier = Modifier.width(dims.controlSpacing))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = item.score.toString(),
+                        text = item.username,
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = onContainerColor
+                    )
+                    Text(
+                        text = item.time,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = onContainerColor.copy(alpha = 0.78f)
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RankingStandardCard(
+    index: Int,
+    item: RankingItem
+) {
+    val dims = appDimens()
+    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(dims.cardPadding),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "#${index + 1}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Score",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(modifier = Modifier.width(dims.controlSpacing))
+            UserAvatar(
+                imageUrl = item.avatarUrl,
+                fallbackLabel = item.username.take(1).uppercase(),
+                size = dims.smallAvatarSize
+            )
+            Spacer(modifier = Modifier.width(dims.controlSpacing))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.username,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = item.time,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text(
+                text = item.score.toString(),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun GameRecordContent(
+    records: List<GameRecordItem>,
+    expandedRecordId: Int?,
+    onToggleExpanded: (Int) -> Unit,
+    onDelete: (GameRecordItem) -> Unit
+) {
+    val dims = appDimens()
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(dims.sectionSpacing)
+    ) {
+        RecordOverviewCard(records)
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            verticalArrangement = Arrangement.spacedBy(dims.controlSpacing)
+        ) {
+            items(
+                count = records.size,
+                key = { index -> records[index].id }
+            ) { index ->
+                val record = records[index]
+                RecordCard(
+                    record = record,
+                    expanded = expandedRecordId == record.id,
+                    onToggleExpanded = { onToggleExpanded(record.id) },
+                    onDelete = { onDelete(record) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecordOverviewCard(records: List<GameRecordItem>) {
+    val dims = appDimens()
+    val bestScore = records.maxOfOrNull { it.score } ?: 0
+    val learnedWordTotal = records.sumOf { it.wordProgress.size }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(dims.cardPaddingLarge),
+            verticalArrangement = Arrangement.spacedBy(dims.controlSpacing)
+        ) {
+            Text(
+                text = "Your recent runs",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Review saved sessions, compare modes and reopen the learned words from each run.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(dims.controlSpacing)
+            ) {
+                StatCard(
+                    title = "Records",
+                    value = records.size.toString(),
+                    modifier = Modifier.weight(1f)
+                )
+                StatCard(
+                    title = "Best score",
+                    value = bestScore.toString(),
+                    modifier = Modifier.weight(1f)
+                )
+                StatCard(
+                    title = "Words",
+                    value = learnedWordTotal.toString(),
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
@@ -676,23 +964,35 @@ private fun RecordCard(
     onDelete: () -> Unit
 ) {
     val dims = appDimens()
-    Card(modifier = Modifier.fillMaxWidth()) {
+    val containerColor = if (record.gameType == 0) {
+        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+    } else {
+        MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = containerColor)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(dims.cardPadding),
-            verticalArrangement = Arrangement.spacedBy(dims.scaled(10.dp))
+            verticalArrangement = Arrangement.spacedBy(dims.controlSpacing)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
-                Column(modifier = Modifier.weight(1f)) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(dims.tinySpacing)
+                ) {
                     Text(
                         text = record.gameTypeLabel,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = record.time,
@@ -700,31 +1000,76 @@ private fun RecordCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Text(
-                    text = record.score.toString(),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = record.score.toString(),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Score",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(dims.chipSpacing),
+                verticalArrangement = Arrangement.spacedBy(dims.chipSpacing)
+            ) {
+                AssistChip(
+                    onClick = { },
+                    enabled = false,
+                    label = { Text(record.gameTypeLabel) }
+                )
+                AssistChip(
+                    onClick = { },
+                    enabled = false,
+                    label = { Text("${record.wordProgress.size} matched") }
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(dims.scaled(10.dp))) {
-                OutlinedButton(onClick = onToggleExpanded) {
-                    Text(if (expanded) "Hide words" else "Show words")
+            Row(horizontalArrangement = Arrangement.spacedBy(dims.controlSpacing)) {
+                FilledTonalButton(onClick = onToggleExpanded) {
+                    Text(if (expanded) "Hide details" else "View details")
                 }
                 TextButton(onClick = onDelete) {
                     Text("Delete")
                 }
             }
             if (expanded) {
-                HorizontalDivider()
-                if (record.learnedWords.isEmpty()) {
-                    Text(
-                        text = "No learned words saved for this record.",
-                        style = MaterialTheme.typography.bodySmall
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
                     )
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(dims.scaled(6.dp))) {
-                        record.learnedWords.forEachIndexed { index, word ->
-                            Text("${index + 1}. $word")
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(dims.cardPadding),
+                        verticalArrangement = Arrangement.spacedBy(dims.compactSpacing)
+                    ) {
+                        Text(
+                            text = "Learned words",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        HorizontalDivider()
+                        if (record.wordProgress.isEmpty()) {
+                            Text(
+                                text = "No learned words saved for this record.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            Column(verticalArrangement = Arrangement.spacedBy(dims.scaled(6.dp))) {
+                                record.wordProgress.forEachIndexed { index, progress ->
+                                    Text(
+                                        text = "${index + 1}. ${progress.displayLabel}",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -740,3 +1085,16 @@ private fun WordFilter.toDisplayName(): String {
         WordFilter.UNMASTERED -> "Learning"
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+

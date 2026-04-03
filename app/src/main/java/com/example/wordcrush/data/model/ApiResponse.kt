@@ -1,9 +1,9 @@
-package com.example.wordcrush.data.model
+﻿package com.example.wordcrush.data.model
 
 import com.google.gson.annotations.SerializedName
 
 /**
- * 统一的 API 响应模型
+ * 缁熶竴鐨?API 鍝嶅簲妯″瀷
  */
 data class ApiResponse<T>(
     @SerializedName("code")
@@ -17,7 +17,7 @@ data class ApiResponse<T>(
 }
 
 /**
- * 登录请求
+ * 鐧诲綍璇锋眰
  */
 data class LoginRequest(
     @SerializedName("username")
@@ -27,7 +27,7 @@ data class LoginRequest(
 )
 
 /**
- * 注册请求
+ * 娉ㄥ唽璇锋眰
  */
 data class RegisterRequest(
     @SerializedName("username")
@@ -37,7 +37,7 @@ data class RegisterRequest(
 )
 
 /**
- * 用户响应数据
+ * 鐢ㄦ埛鍝嶅簲鏁版嵁
  */
 data class UserResponse(
     @SerializedName("username")
@@ -46,4 +46,13 @@ data class UserResponse(
     val uid: String,
     @SerializedName("token")
     val token: String
+)
+
+data class AvatarUploadResponse(
+    @SerializedName("username")
+    val username: String,
+    @SerializedName("avatarUrl")
+    val avatarUrl: String,
+    @SerializedName("avatarVersion")
+    val avatarVersion: Long = 0L
 )

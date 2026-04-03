@@ -1,11 +1,12 @@
 package com.example.wordcrush.ui.viewmodel
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.wordcrush.data.local.PreferenceManager
-import com.example.wordcrush.data.repository.WordRepository
 import com.example.wordcrush.data.repository.AccountRepository
 import com.example.wordcrush.data.repository.GameRecordRepository
+import com.example.wordcrush.data.repository.WordRepository
 import com.example.wordcrush.utils.AppStateManager
 import com.example.wordcrush.utils.AvatarUrlFactory
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -99,6 +100,26 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun uploadAvatar(uri: Uri) {
+        viewModelScope.launch {
+            val username = preferenceManager.usernameFlow.firstOrNull().orEmpty()
+            if (username.isBlank()) {
+                _messageEvent.emit("No logged-in user found.")
+                return@launch
+            }
+            _uiState.value = _uiState.value.copy(isUploadingAvatar = true)
+            accountRepository.uploadAvatar(username, uri)
+                .onSuccess { avatarUrl ->
+                    appStateManager.setAvatarUrl(avatarUrl)
+                    _messageEvent.emit("Avatar updated.")
+                }
+                .onFailure { error ->
+                    _messageEvent.emit(error.message ?: "Avatar upload failed.")
+                }
+            _uiState.value = _uiState.value.copy(isUploadingAvatar = false)
+        }
+    }
+
     fun getAllScore() {
         viewModelScope.launch {
             refreshScoreSummary()
@@ -108,9 +129,21 @@ class HomeViewModel @Inject constructor(
     fun syncCloudData() {
         viewModelScope.launch {
             gameRecordRepository.syncFromCloud()
-                .onSuccess {
+                .onSuccess { result ->
                     refreshScoreSummary()
-                    _messageEvent.emit("Cloud data synced.")
+                    val message = buildString {
+                        append("Cloud data synced.")
+                        if (result.uploadedCount > 0) {
+                            append(" Uploaded ")
+                            append(result.uploadedCount)
+                            append(" local record")
+                            if (result.uploadedCount > 1) {
+                                append("s")
+                            }
+                            append(".")
+                        }
+                    }
+                    _messageEvent.emit(message)
                 }
                 .onFailure { error ->
                     _messageEvent.emit(error.message ?: "Cloud sync failed.")
@@ -166,6 +199,7 @@ data class HomeUiState(
     val username: String = "",
     val avatarUrl: String = "",
     val isLoading: Boolean = false,
+    val isUploadingAvatar: Boolean = false,
     val error: String? = null,
     val breakthroughScore: Int = 0,
     val timeLimitScore: Int = 0,
