@@ -2,77 +2,93 @@ package com.example.wordcrush.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.wordcrush.data.repository.AccountRepository
-import com.example.wordcrush.data.session.SessionManager
-import com.example.wordcrush.utils.LogUtils
+import com.example.wordcrush.domain.usecase.LoginUseCase
+import com.example.wordcrush.domain.usecase.RestoreSessionUseCase
+import com.example.wordcrush.ui.architecture.UdfStore
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlinx.coroutines.launch
+
+sealed interface LoginAction {
+    data class UsernameChanged(val value: String) : LoginAction
+    data class PasswordChanged(val value: String) : LoginAction
+    data object Initialize : LoginAction
+    data object Submit : LoginAction
+    data object ClearError : LoginAction
+}
+
+sealed interface LoginEffect {
+    data object LoginSucceeded : LoginEffect
+    data class ShowMessage(val message: String) : LoginEffect
+}
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val accountRepository: AccountRepository,
-    private val sessionManager: SessionManager
+    private val loginUseCase: LoginUseCase,
+    private val restoreSessionUseCase: RestoreSessionUseCase
 ) : ViewModel() {
+    private val store = UdfStore<LoginUiState, LoginEffect>(LoginUiState())
+    val uiState = store.uiState
+    val effect = store.effect
 
-    private val _uiState = MutableStateFlow(LoginUiState())
-    val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
+    private val currentState: LoginUiState
+        get() = store.currentState
 
-    private val _loginResult = MutableStateFlow<LoginResult?>(null)
-    val loginResult: StateFlow<LoginResult?> = _loginResult.asStateFlow()
+    private fun updateState(transform: (LoginUiState) -> LoginUiState) = store.updateState(transform)
+    private fun setState(state: LoginUiState) = store.setState(state)
+    private fun emitEffect(effect: LoginEffect) = store.emitEffect(effect)
+    private fun launchAction(block: suspend () -> Unit) {
+        viewModelScope.launch { block() }
+    }
 
-    fun login(username: String, password: String) {
-        if (username.isBlank() || password.isBlank()) {
-            _uiState.value = LoginUiState(error = "Username and password are required.")
-            return
-        }
-
-        viewModelScope.launch {
-            _uiState.value = LoginUiState(isLoading = true)
-            accountRepository.login(username, password).fold(
-                onSuccess = { message ->
-                    LogUtils.d("Login success: $message")
-                    _uiState.value = LoginUiState()
-                    _loginResult.value = LoginResult.Success(message)
-                },
-                onFailure = { error ->
-                    val message = error.message ?: "Login failed."
-                    LogUtils.e("Login failed: $message")
-                    _uiState.value = LoginUiState(error = message)
-                    _loginResult.value = LoginResult.Error(message)
-                }
-            )
+    fun onAction(action: LoginAction) {
+        when (action) {
+            is LoginAction.UsernameChanged -> updateState {
+                it.copy(username = action.value, error = null)
+            }
+            is LoginAction.PasswordChanged -> updateState {
+                it.copy(password = action.value, error = null)
+            }
+            LoginAction.Initialize -> initialize()
+            LoginAction.Submit -> submit()
+            LoginAction.ClearError -> updateState { it.copy(error = null) }
         }
     }
 
-    fun checkLocalLoginState() {
-        viewModelScope.launch {
-            sessionManager.restore()
-            if (sessionManager.isLoggedIn.value) {
-                _loginResult.value = LoginResult.AlreadyLoggedIn
+    private fun initialize() {
+        launchAction {
+            if (restoreSessionUseCase()) {
+                emitEffect(LoginEffect.LoginSucceeded)
             }
         }
     }
 
-    fun clearError() {
-        _uiState.value = _uiState.value.copy(error = null)
+    private fun submit() {
+        val state = currentState
+        launchAction {
+            setState(state.copy(isLoading = true, error = null))
+            loginUseCase(state.username, state.password)
+                .onSuccess {
+                    setState(currentState.copy(isLoading = false, password = ""))
+                    emitEffect(LoginEffect.LoginSucceeded)
+                }
+                .onFailure { error ->
+                    val message = error.message ?: "Login failed."
+                    setState(currentState.copy(isLoading = false, error = message))
+                    emitEffect(LoginEffect.ShowMessage(message))
+                }
+        }
     }
 
-    fun resetLoginResult() {
-        _loginResult.value = null
+    override fun onCleared() {
+        store.close()
+        super.onCleared()
     }
 }
 
 data class LoginUiState(
+    val username: String = "",
+    val password: String = "",
     val isLoading: Boolean = false,
     val error: String? = null
 )
-
-sealed class LoginResult {
-    data class Success(val message: String) : LoginResult()
-    data class Error(val message: String) : LoginResult()
-    data object AlreadyLoggedIn : LoginResult()
-}

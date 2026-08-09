@@ -2,79 +2,86 @@ package com.example.wordcrush.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.wordcrush.data.repository.AccountRepository
-import com.example.wordcrush.utils.LogUtils
+import com.example.wordcrush.domain.usecase.RegisterUseCase
+import com.example.wordcrush.ui.architecture.UdfStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+sealed interface RegisterAction {
+    data class UsernameChanged(val value: String) : RegisterAction
+    data class PasswordChanged(val value: String) : RegisterAction
+    data class ConfirmPasswordChanged(val value: String) : RegisterAction
+    data object Submit : RegisterAction
+    data object ClearError : RegisterAction
+}
+
+sealed interface RegisterEffect {
+    data class RegistrationSucceeded(val message: String) : RegisterEffect
+    data class ShowMessage(val message: String) : RegisterEffect
+}
 
 @HiltViewModel
 class RegisterViewModel @Inject constructor(
-    private val accountRepository: AccountRepository
+    private val registerUseCase: RegisterUseCase
 ) : ViewModel() {
+    private val store = UdfStore<RegisterUiState, RegisterEffect>(RegisterUiState())
+    val uiState = store.uiState
+    val effect = store.effect
 
-    private val _uiState = MutableStateFlow(RegisterUiState())
-    val uiState: StateFlow<RegisterUiState> = _uiState.asStateFlow()
+    private val currentState: RegisterUiState
+        get() = store.currentState
 
-    private val _registerResult = MutableStateFlow<RegisterResult?>(null)
-    val registerResult: StateFlow<RegisterResult?> = _registerResult.asStateFlow()
+    private fun updateState(transform: (RegisterUiState) -> RegisterUiState) = store.updateState(transform)
+    private fun setState(state: RegisterUiState) = store.setState(state)
+    private fun emitEffect(effect: RegisterEffect) = store.emitEffect(effect)
+    private fun launchAction(block: suspend () -> Unit) {
+        viewModelScope.launch { block() }
+    }
 
-    fun register(username: String, password: String, confirmPassword: String) {
-        when {
-            username.isBlank() -> {
-                _uiState.value = RegisterUiState(error = "Username is required.")
-                return
+    fun onAction(action: RegisterAction) {
+        when (action) {
+            is RegisterAction.UsernameChanged -> updateState {
+                it.copy(username = action.value, error = null)
             }
-            password.isBlank() || confirmPassword.isBlank() -> {
-                _uiState.value = RegisterUiState(error = "Password is required.")
-                return
+            is RegisterAction.PasswordChanged -> updateState {
+                it.copy(password = action.value, error = null)
             }
-            password != confirmPassword -> {
-                _uiState.value = RegisterUiState(error = "Passwords do not match.")
-                return
+            is RegisterAction.ConfirmPasswordChanged -> updateState {
+                it.copy(confirmPassword = action.value, error = null)
             }
-            password.length < 6 -> {
-                _uiState.value = RegisterUiState(error = "Password must be at least 6 characters.")
-                return
-            }
+            RegisterAction.Submit -> submit()
+            RegisterAction.ClearError -> updateState { it.copy(error = null) }
         }
+    }
 
-        viewModelScope.launch {
-            _uiState.value = RegisterUiState(isLoading = true)
-            accountRepository.register(username, password).fold(
-                onSuccess = { message ->
-                    LogUtils.d("Register success: $message")
-                    _uiState.value = RegisterUiState()
-                    _registerResult.value = RegisterResult.Success(message)
-                },
-                onFailure = { error ->
-                    val message = error.message ?: "Registration failed."
-                    LogUtils.e("Register failed: $message")
-                    _uiState.value = RegisterUiState(error = message)
-                    _registerResult.value = RegisterResult.Error(message)
+    private fun submit() {
+        val state = currentState
+        launchAction {
+            setState(state.copy(isLoading = true, error = null))
+            registerUseCase(state.username, state.password, state.confirmPassword)
+                .onSuccess { message ->
+                    setState(RegisterUiState())
+                    emitEffect(RegisterEffect.RegistrationSucceeded(message))
                 }
-            )
+                .onFailure { error ->
+                    val message = error.message ?: "Registration failed."
+                    setState(currentState.copy(isLoading = false, error = message))
+                    emitEffect(RegisterEffect.ShowMessage(message))
+                }
         }
     }
 
-    fun clearError() {
-        _uiState.value = _uiState.value.copy(error = null)
-    }
-
-    fun resetRegisterResult() {
-        _registerResult.value = null
+    override fun onCleared() {
+        store.close()
+        super.onCleared()
     }
 }
 
 data class RegisterUiState(
+    val username: String = "",
+    val password: String = "",
+    val confirmPassword: String = "",
     val isLoading: Boolean = false,
     val error: String? = null
 )
-
-sealed class RegisterResult {
-    data class Success(val message: String) : RegisterResult()
-    data class Error(val message: String) : RegisterResult()
-}

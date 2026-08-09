@@ -24,7 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.wordcrush.ui.viewmodel.MainViewModel
-import com.example.wordcrush.ui.viewmodel.SessionNavigationEvent
+import com.example.wordcrush.ui.viewmodel.MainAction
+import com.example.wordcrush.ui.viewmodel.MainEffect
 
 internal enum class RootFlow {
     Loading,
@@ -64,33 +65,21 @@ fun WordCrushApp(
 ) {
     val viewModel: MainViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val navigationEvent by viewModel.navigationEvent.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    var rootFlowOverride by remember { mutableStateOf<RootFlow?>(RootFlow.Loading) }
 
     LaunchedEffect(Unit) {
-        viewModel.validateTokenAndInit()
+        viewModel.onAction(MainAction.Initialize)
     }
 
-    LaunchedEffect(uiState.isLoggedIn, uiState.isLoading, uiState.hasCheckedSession) {
-        if (uiState.hasCheckedSession && !uiState.isLoading) {
-            rootFlowOverride = null
+    LaunchedEffect(viewModel) {
+        viewModel.effect.collect { effect ->
+            when (effect) {
+                is MainEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.message)
+            }
         }
     }
 
-    LaunchedEffect(navigationEvent) {
-        if (navigationEvent == SessionNavigationEvent.NavigateToLogin) {
-            rootFlowOverride = RootFlow.Auth
-            viewModel.resetNavigationEvent()
-        }
-    }
-
-    LaunchedEffect(uiState.error) {
-        val message = uiState.error ?: return@LaunchedEffect
-        snackbarHostState.showSnackbar(message)
-    }
-
-    val rootFlow = rootFlowOverride ?: when {
+    val rootFlow = when {
         !uiState.hasCheckedSession || uiState.isLoading -> RootFlow.Loading
         uiState.isLoggedIn -> RootFlow.Main
         else -> RootFlow.Auth
@@ -118,14 +107,13 @@ fun WordCrushApp(
                     RootFlow.Auth -> AuthFlow(
                         snackbarHostState = snackbarHostState,
                         onRequestSessionRefresh = {
-                            rootFlowOverride = RootFlow.Loading
-                            viewModel.validateTokenAndInit()
+                            viewModel.onAction(MainAction.RefreshSession)
                         }
                     )
                     RootFlow.Main -> MainFlow(
                         snackbarHostState = snackbarHostState,
                         onPlayAudio = onPlayAudio,
-                        onLogout = { rootFlowOverride = RootFlow.Auth }
+                        onLogout = { viewModel.onAction(MainAction.RefreshSession) }
                     )
                 }
 

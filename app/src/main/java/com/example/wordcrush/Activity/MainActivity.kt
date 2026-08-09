@@ -5,7 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.example.wordcrush.data.repository.AudioPlayer
-import com.example.wordcrush.data.repository.ActiveGameSessionManager
+import com.example.wordcrush.domain.usecase.PersistActiveSessionsUseCase
 import com.example.wordcrush.ui.compose.WordCrushApp
 import com.example.wordcrush.ui.compose.theme.WordCrushTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -22,7 +22,7 @@ class MainActivity : ComponentActivity() {
     lateinit var audioPlayer: AudioPlayer
 
     @Inject
-    lateinit var activeGameSessionManager: ActiveGameSessionManager
+    lateinit var persistActiveSessionsUseCase: PersistActiveSessionsUseCase
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,7 +43,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         if (isFinishing && !isChangingConfigurations) {
             runBlocking {
-                activeGameSessionManager.persistActiveSessionsLocally()
+                persistActiveSessionsUseCase()
             }
         }
         super.onDestroy()

@@ -5,18 +5,23 @@ WordCrush 是一个基于 Android + Jetpack Compose 的英语单词学习与配�
 ## 技术栈
 
 - Kotlin / Jetpack Compose / Material 3
-- Hilt / ViewModel / StateFlow
+- Hilt / ViewModel / StateFlow / 单向数据流
 - Room / DataStore
 - Retrofit + OkHttp + Gson
 - Glide
 
-## 客户端分层
+## 客户端分层与单向数据流
 
 ```text
-UI
- ↓
-ViewModel
- ↓
+Compose UI
+  │ Action
+  ▼
+ViewModel ───────────────► UiEffect ──► 导航 / Snackbar / 音频
+  │
+  ├─ UiState ◄── Reducer（纯状态转换）
+  ▼
+UseCase
+  ▼
 Repository
  ├─ LocalDataSource       // Room、DataStore
  └─ RemoteDataSource
@@ -28,6 +33,13 @@ Repository
           ↓
    Server
 ```
+
+每个页面通过 `Action` 向 ViewModel 发送用户意图，ViewModel 通过 UseCase
+执行业务操作并更新不可变 `UiState`。一次性行为使用 `Effect`，不放入
+`StateFlow`，因此重组不会重复触发导航、提示或音频。
+
+经典和计时配对共用 `MatchViewModel` 与纯 `MatchGameReducer`；计时、进度、
+记录保存和活动会话持久化由 UseCase 负责。
 
 Repository 不直接依赖 Retrofit 或 OkHttp。网络层通过 Hilt 区分公共 HTTP、鉴权 HTTP、公共 WebSocket 和鉴权 WebSocket 客户端。
 

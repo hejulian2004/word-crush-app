@@ -54,11 +54,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.wordcrush.data.model.GameRecordItem
 import com.example.wordcrush.data.model.RankingItem
 import com.example.wordcrush.data.model.WordItem
-import com.example.wordcrush.ui.model.MatchGameEvent
+import com.example.wordcrush.ui.viewmodel.GameRecordAction
 import com.example.wordcrush.ui.viewmodel.GameRecordViewModel
+import com.example.wordcrush.ui.viewmodel.GameRecordEffect
+import com.example.wordcrush.ui.viewmodel.HomeAction
+import com.example.wordcrush.ui.viewmodel.HomeEffect
 import com.example.wordcrush.ui.viewmodel.HomeViewModel
+import com.example.wordcrush.ui.viewmodel.RankingAction
+import com.example.wordcrush.ui.viewmodel.RankingEffect
 import com.example.wordcrush.ui.viewmodel.RankingViewModel
-import com.example.wordcrush.ui.viewmodel.SessionNavigationEvent
+import com.example.wordcrush.ui.viewmodel.WordBookAction
+import com.example.wordcrush.ui.viewmodel.WordBookEffect
 import com.example.wordcrush.ui.viewmodel.WordBookViewModel
 import com.example.wordcrush.ui.viewmodel.WordFilter
 
@@ -72,12 +78,10 @@ internal fun WordBookRoute(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
 
-    LaunchedEffect(Unit) {
-        viewModel.event.collect { event ->
-            when (event) {
-                is MatchGameEvent.PlayAudio -> onPlayAudio(event.word, event.type)
-                is MatchGameEvent.Message -> onShowMessage(event.text)
-                is MatchGameEvent.GameOver -> Unit
+    LaunchedEffect(viewModel) {
+        viewModel.effect.collect { effect ->
+            when (effect) {
+                is WordBookEffect.PlayAudio -> onPlayAudio(effect.word, effect.type)
             }
         }
     }
@@ -94,7 +98,7 @@ internal fun WordBookRoute(
                 totalCount > 0 &&
                 lastVisibleIndex >= totalCount - 6
             ) {
-                viewModel.loadMore()
+                viewModel.onAction(WordBookAction.LoadMore)
             }
         }
     }
@@ -122,7 +126,7 @@ internal fun WordBookRoute(
             ) {
                 OutlinedTextField(
                     value = uiState.query,
-                    onValueChange = viewModel::updateQuery,
+                    onValueChange = { viewModel.onAction(WordBookAction.QueryChanged(it)) },
                     modifier = Modifier.weight(1f),
                     label = { Text("Search words") },
                     singleLine = true,
@@ -132,7 +136,7 @@ internal fun WordBookRoute(
                     contentAlignment = Alignment.Center
                 ) {
                     Button(
-                        onClick = viewModel::applySearch,
+                        onClick = { viewModel.onAction(WordBookAction.ApplySearch) },
                         modifier = Modifier.height(dims.inputHeight)
                     ) {
                         Text("Search")
@@ -148,7 +152,7 @@ internal fun WordBookRoute(
                 WordFilter.entries.forEach { filter ->
                     FilterChip(
                         selected = uiState.filter == filter,
-                        onClick = { viewModel.updateFilter(filter) },
+                        onClick = { viewModel.onAction(WordBookAction.FilterChanged(filter)) },
                         label = { Text(filter.toDisplayName()) }
                     )
                 }
@@ -170,10 +174,10 @@ internal fun WordBookRoute(
             ) { word ->
                 WordItemCard(
                     word = word,
-                    onPlayUk = { viewModel.playAudio(word, 1) },
-                    onPlayUs = { viewModel.playAudio(word, 2) },
+                    onPlayUk = { viewModel.onAction(WordBookAction.PlayAudio(word, 1)) },
+                    onPlayUs = { viewModel.onAction(WordBookAction.PlayAudio(word, 2)) },
                     onMasteryChanged = { isMastered ->
-                        viewModel.updateMastery(word, isMastered)
+                        viewModel.onAction(WordBookAction.MasteryChanged(word, isMastered))
                     }
                 )
             }
@@ -200,25 +204,19 @@ internal fun HomeRoute(
     val dims = appDimens()
     val viewModel: HomeViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val navigationEvent by viewModel.navigationEvent.collectAsStateWithLifecycle()
-    var showPasswordDialog by rememberSaveable { mutableStateOf(false) }
-    var oldPassword by rememberSaveable { mutableStateOf("") }
-    var newPassword by rememberSaveable { mutableStateOf("") }
-    var confirmPassword by rememberSaveable { mutableStateOf("") }
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
-            viewModel.uploadAvatar(uri)
+            viewModel.onAction(HomeAction.UploadAvatar(uri))
         }
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.messageEvent.collect(onShowMessage)
-    }
-
-    LaunchedEffect(navigationEvent) {
-        if (navigationEvent == SessionNavigationEvent.NavigateToLogin) {
-            viewModel.resetNavigationEvent()
-            onLogout()
+    LaunchedEffect(viewModel) {
+        viewModel.effect.collect { effect ->
+            when (effect) {
+                is HomeEffect.ShowMessage -> onShowMessage(effect.message)
+                HomeEffect.NavigateToLogin -> onLogout()
+                HomeEffect.OpenRecords -> onOpenRecords()
+            }
         }
     }
 
@@ -343,7 +341,7 @@ internal fun HomeRoute(
                 ) {
                     OutlinedTextField(
                         value = uiState.dailyTargetInput,
-                        onValueChange = viewModel::updateDailyTargetInput,
+                        onValueChange = { viewModel.onAction(HomeAction.DailyTargetChanged(it)) },
                         modifier = Modifier.weight(1f),
                         label = { Text("Daily word count") },
                         singleLine = true,
@@ -353,7 +351,7 @@ internal fun HomeRoute(
                         )
                     )
                     Button(
-                        onClick = viewModel::saveDailyTarget,
+                        onClick = { viewModel.onAction(HomeAction.SaveDailyTarget) },
                         modifier = Modifier.height(dims.inputHeight)
                     ) {
                         Text("Save")
@@ -379,7 +377,7 @@ internal fun HomeRoute(
                     fontWeight = FontWeight.SemiBold
                 )
                 Button(
-                    onClick = onOpenRecords,
+                    onClick = { viewModel.onAction(HomeAction.OpenRecords) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(dims.inputHeight)
@@ -387,7 +385,7 @@ internal fun HomeRoute(
                     Text("Game records")
                 }
                 FilledTonalButton(
-                    onClick = viewModel::syncCloudData,
+                    onClick = { viewModel.onAction(HomeAction.SyncCloudData) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(dims.inputHeight)
@@ -395,7 +393,7 @@ internal fun HomeRoute(
                     Text("Sync cloud data")
                 }
                 OutlinedButton(
-                    onClick = viewModel::getAllScore,
+                    onClick = { viewModel.onAction(HomeAction.Refresh) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(dims.inputHeight)
@@ -403,7 +401,7 @@ internal fun HomeRoute(
                     Text("Refresh scores")
                 }
                 OutlinedButton(
-                    onClick = { showPasswordDialog = true },
+                    onClick = { viewModel.onAction(HomeAction.ShowPasswordDialog) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(dims.inputHeight)
@@ -413,7 +411,7 @@ internal fun HomeRoute(
             }
         }
         OutlinedButton(
-            onClick = viewModel::logout,
+            onClick = { viewModel.onAction(HomeAction.Logout) },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(dims.inputHeight)
@@ -423,29 +421,29 @@ internal fun HomeRoute(
         Spacer(modifier = Modifier.height(dims.scaled(24.dp)))
     }
 
-    if (showPasswordDialog) {
+    if (uiState.showPasswordDialog) {
         AlertDialog(
-            onDismissRequest = { showPasswordDialog = false },
+            onDismissRequest = { viewModel.onAction(HomeAction.DismissPasswordDialog) },
             title = { Text("Change password") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
-                        value = oldPassword,
-                        onValueChange = { oldPassword = it },
+                        value = uiState.oldPassword,
+                        onValueChange = { viewModel.onAction(HomeAction.OldPasswordChanged(it)) },
                         label = { Text("Current password") },
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation()
                     )
                     OutlinedTextField(
-                        value = newPassword,
-                        onValueChange = { newPassword = it },
+                        value = uiState.newPassword,
+                        onValueChange = { viewModel.onAction(HomeAction.NewPasswordChanged(it)) },
                         label = { Text("New password") },
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation()
                     )
                     OutlinedTextField(
-                        value = confirmPassword,
-                        onValueChange = { confirmPassword = it },
+                        value = uiState.confirmPassword,
+                        onValueChange = { viewModel.onAction(HomeAction.ConfirmPasswordChanged(it)) },
                         label = { Text("Confirm new password") },
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation()
@@ -453,18 +451,12 @@ internal fun HomeRoute(
                 }
             },
             confirmButton = {
-                Button(onClick = {
-                    viewModel.changePassword(oldPassword, newPassword, confirmPassword)
-                    showPasswordDialog = false
-                    oldPassword = ""
-                    newPassword = ""
-                    confirmPassword = ""
-                }) {
+                Button(onClick = { viewModel.onAction(HomeAction.SubmitPasswordChange) }) {
                     Text("Update")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showPasswordDialog = false }) {
+                TextButton(onClick = { viewModel.onAction(HomeAction.DismissPasswordDialog) }) {
                     Text("Cancel")
                 }
             }
@@ -482,11 +474,15 @@ internal fun RankingRoute(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(gameType) {
-        viewModel.loadRankings(gameType)
+        viewModel.onAction(RankingAction.Load(gameType))
     }
 
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let(onShowMessage)
+    LaunchedEffect(viewModel) {
+        viewModel.effect.collect { effect ->
+            when (effect) {
+                is RankingEffect.ShowMessage -> onShowMessage(effect.message)
+            }
+        }
     }
 
     ScreenScaffold(
@@ -515,21 +511,15 @@ internal fun GameRecordRoute(
 ) {
     val viewModel: GameRecordViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var expandedRecordId by rememberSaveable { mutableStateOf<Int?>(null) }
-    var pendingDelete by remember { mutableStateOf<GameRecordItem?>(null) }
 
     LaunchedEffect(Unit) {
-        viewModel.loadGameRecords()
+        viewModel.onAction(GameRecordAction.Load)
     }
 
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let(onShowMessage)
-    }
-
-    LaunchedEffect(Unit) {
-        viewModel.event.collect { event ->
-            if (event is MatchGameEvent.Message) {
-                onShowMessage(event.text)
+    LaunchedEffect(viewModel) {
+        viewModel.effect.collect { effect ->
+            when (effect) {
+                is GameRecordEffect.ShowMessage -> onShowMessage(effect.message)
             }
         }
     }
@@ -547,30 +537,31 @@ internal fun GameRecordRoute(
             )
             else -> GameRecordContent(
                 records = uiState.records,
-                expandedRecordId = expandedRecordId,
+                expandedRecordId = uiState.expandedRecordId,
                 onToggleExpanded = { recordId ->
-                    expandedRecordId = if (expandedRecordId == recordId) null else recordId
+                    viewModel.onAction(GameRecordAction.ToggleExpanded(recordId))
                 },
-                onDelete = { record -> pendingDelete = record }
+                onDelete = { record ->
+                    viewModel.onAction(GameRecordAction.RequestDelete(record))
+                }
             )
         }
     }
 
-    if (pendingDelete != null) {
+    if (uiState.pendingDelete != null) {
         AlertDialog(
-            onDismissRequest = { pendingDelete = null },
+            onDismissRequest = { viewModel.onAction(GameRecordAction.DismissDelete) },
             title = { Text("Delete record") },
             text = { Text("This removes the local record and attempts to sync the deletion to the server.") },
             confirmButton = {
                 Button(onClick = {
-                    viewModel.deleteRecord(pendingDelete!!)
-                    pendingDelete = null
+                    viewModel.onAction(GameRecordAction.ConfirmDelete)
                 }) {
                     Text("Delete")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendingDelete = null }) {
+                TextButton(onClick = { viewModel.onAction(GameRecordAction.DismissDelete) }) {
                     Text("Cancel")
                 }
             }

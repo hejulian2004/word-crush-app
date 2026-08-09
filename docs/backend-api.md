@@ -185,6 +185,10 @@ POST api/getAllGameRecord
 
 ## 客户端网络层
 
+Compose 页面不直接访问网络或本地数据。页面 Action 由 ViewModel 接收，
+UseCase 再调用 Repository；网络层仍只负责 Retrofit/OkHttp 和统一错误处理。
+导航、Snackbar、音频等一次性行为通过 ViewModel Effect 发送给 UI。
+
 客户端按以下边界组织网络访问：
 
 - `PublicAccountApi` / `PublicGameApi`：公共 Retrofit API。

@@ -12,10 +12,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
@@ -27,9 +24,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.wordcrush.ui.viewmodel.LoginResult
+import com.example.wordcrush.ui.viewmodel.LoginAction
+import com.example.wordcrush.ui.viewmodel.LoginEffect
 import com.example.wordcrush.ui.viewmodel.LoginViewModel
-import com.example.wordcrush.ui.viewmodel.RegisterResult
+import com.example.wordcrush.ui.viewmodel.RegisterAction
+import com.example.wordcrush.ui.viewmodel.RegisterEffect
 import com.example.wordcrush.ui.viewmodel.RegisterViewModel
 import kotlinx.coroutines.launch
 
@@ -80,24 +79,17 @@ private fun LoginRoute(
     val dims = appDimens()
     val viewModel: LoginViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val loginResult by viewModel.loginResult.collectAsStateWithLifecycle()
-    var username by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
 
-    LaunchedEffect(Unit) {
-        viewModel.checkLocalLoginState()
+    LaunchedEffect(viewModel) {
+        viewModel.effect.collect { effect ->
+            when (effect) {
+                LoginEffect.LoginSucceeded -> onLoginSuccess()
+                is LoginEffect.ShowMessage -> onShowMessage(effect.message)
+            }
+        }
     }
-
-    LaunchedEffect(loginResult) {
-        when (val result = loginResult) {
-            is LoginResult.Success -> onLoginSuccess()
-            LoginResult.AlreadyLoggedIn -> onLoginSuccess()
-            is LoginResult.Error -> onShowMessage(result.message)
-            null -> Unit
-        }
-        if (loginResult != null) {
-            viewModel.resetLoginResult()
-        }
+    LaunchedEffect(Unit) {
+        viewModel.onAction(LoginAction.Initialize)
     }
 
     AuthScreen(
@@ -105,26 +97,20 @@ private fun LoginRoute(
         subtitle = "Sign in to continue your vocabulary training."
     ) {
         OutlinedTextField(
-            value = username,
-            onValueChange = {
-                username = it
-                viewModel.clearError()
-            },
+            value = uiState.username,
+            onValueChange = { viewModel.onAction(LoginAction.UsernameChanged(it)) },
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Username") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(
-            keyboardType = KeyboardType.Text,
-            imeAction = ImeAction.Next
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Next
+            )
         )
-    )
         Spacer(modifier = Modifier.height(dims.controlSpacing))
         OutlinedTextField(
-            value = password,
-            onValueChange = {
-                password = it
-                viewModel.clearError()
-            },
+            value = uiState.password,
+            onValueChange = { viewModel.onAction(LoginAction.PasswordChanged(it)) },
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Password") },
             singleLine = true,
@@ -140,7 +126,7 @@ private fun LoginRoute(
         }
         Spacer(modifier = Modifier.height(dims.cardPaddingLarge))
         Button(
-            onClick = { viewModel.login(username.trim(), password.trim()) },
+            onClick = { viewModel.onAction(LoginAction.Submit) },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(dims.inputHeight),
@@ -168,19 +154,13 @@ private fun RegisterRoute(
     val dims = appDimens()
     val viewModel: RegisterViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val registerResult by viewModel.registerResult.collectAsStateWithLifecycle()
-    var username by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
-    var confirmPassword by rememberSaveable { mutableStateOf("") }
 
-    LaunchedEffect(registerResult) {
-        when (val result = registerResult) {
-            is RegisterResult.Success -> onRegisterSuccess()
-            is RegisterResult.Error -> onShowMessage(result.message)
-            null -> Unit
-        }
-        if (registerResult != null) {
-            viewModel.resetRegisterResult()
+    LaunchedEffect(viewModel) {
+        viewModel.effect.collect { effect ->
+            when (effect) {
+                is RegisterEffect.RegistrationSucceeded -> onRegisterSuccess()
+                is RegisterEffect.ShowMessage -> onShowMessage(effect.message)
+            }
         }
     }
 
@@ -189,22 +169,16 @@ private fun RegisterRoute(
         subtitle = "A single activity host now drives the full app flow."
     ) {
         OutlinedTextField(
-            value = username,
-            onValueChange = {
-                username = it
-                viewModel.clearError()
-            },
+            value = uiState.username,
+            onValueChange = { viewModel.onAction(RegisterAction.UsernameChanged(it)) },
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Username") },
             singleLine = true
         )
         Spacer(modifier = Modifier.height(dims.controlSpacing))
         OutlinedTextField(
-            value = password,
-            onValueChange = {
-                password = it
-                viewModel.clearError()
-            },
+            value = uiState.password,
+            onValueChange = { viewModel.onAction(RegisterAction.PasswordChanged(it)) },
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Password") },
             singleLine = true,
@@ -212,11 +186,8 @@ private fun RegisterRoute(
         )
         Spacer(modifier = Modifier.height(dims.controlSpacing))
         OutlinedTextField(
-            value = confirmPassword,
-            onValueChange = {
-                confirmPassword = it
-                viewModel.clearError()
-            },
+            value = uiState.confirmPassword,
+            onValueChange = { viewModel.onAction(RegisterAction.ConfirmPasswordChanged(it)) },
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Confirm password") },
             singleLine = true,
@@ -228,7 +199,7 @@ private fun RegisterRoute(
         }
         Spacer(modifier = Modifier.height(dims.cardPaddingLarge))
         Button(
-            onClick = { viewModel.register(username.trim(), password.trim(), confirmPassword.trim()) },
+            onClick = { viewModel.onAction(RegisterAction.Submit) },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(dims.inputHeight),

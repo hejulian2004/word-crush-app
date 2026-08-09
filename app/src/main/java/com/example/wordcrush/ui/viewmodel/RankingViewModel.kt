@@ -1,44 +1,82 @@
-﻿package com.example.wordcrush.ui.viewmodel
+package com.example.wordcrush.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.wordcrush.data.model.RankingItem
-import com.example.wordcrush.data.repository.GameRecordRepository
+import com.example.wordcrush.domain.usecase.GetRankingUseCase
+import com.example.wordcrush.ui.architecture.UdfStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+sealed interface RankingAction {
+    data class Load(val gameType: Int, val limit: Int = 50) : RankingAction
+    data object Retry : RankingAction
+}
+
+sealed interface RankingEffect {
+    data class ShowMessage(val message: String) : RankingEffect
+}
 
 @HiltViewModel
 class RankingViewModel @Inject constructor(
-    private val gameRecordRepository: GameRecordRepository
+    private val getRankingUseCase: GetRankingUseCase
 ) : ViewModel() {
+    private var lastGameType: Int = 0
+    private var lastLimit: Int = 50
 
-    private val _uiState = MutableStateFlow(RankingUiState())
-    val uiState: StateFlow<RankingUiState> = _uiState.asStateFlow()
+    private val store = UdfStore<RankingUiState, RankingEffect>(RankingUiState())
+    val uiState = store.uiState
+    val effect = store.effect
 
-    fun loadRankings(gameType: Int, limit: Int = 50) {
-        viewModelScope.launch {
-            val cachedRankings = gameRecordRepository.getCachedRanking(gameType, limit)
-            _uiState.value = if (cachedRankings.isEmpty()) {
-                RankingUiState(isLoading = true)
-            } else {
-                RankingUiState(rankings = cachedRankings)
+    private fun updateState(transform: (RankingUiState) -> RankingUiState) = store.updateState(transform)
+    private fun emitEffect(effect: RankingEffect) = store.emitEffect(effect)
+    private fun launchAction(block: suspend () -> Unit) {
+        viewModelScope.launch { block() }
+    }
+
+    fun onAction(action: RankingAction) {
+        when (action) {
+            is RankingAction.Load -> {
+                lastGameType = action.gameType
+                lastLimit = action.limit
+                load(action.gameType, action.limit)
             }
-
-            val result = gameRecordRepository.getRanking(gameType, limit)
-            _uiState.value = result.fold(
-                onSuccess = { rankings -> RankingUiState(rankings = rankings) },
-                onFailure = { error ->
-                    RankingUiState(
-                        rankings = cachedRankings,
-                        error = error.message ?: "Unable to load ranking data."
-                    )
-                }
-            )
+            RankingAction.Retry -> load(lastGameType, lastLimit)
         }
+    }
+
+    private fun load(gameType: Int, limit: Int) {
+        launchAction {
+            val cachedRankings = getRankingUseCase.cached(gameType, limit)
+            updateState {
+                it.copy(
+                    isLoading = cachedRankings.isEmpty(),
+                    rankings = cachedRankings,
+                    error = null
+                )
+            }
+            getRankingUseCase(gameType, limit)
+                .onSuccess { rankings ->
+                    updateState { it.copy(isLoading = false, rankings = rankings, error = null) }
+                }
+                .onFailure { error ->
+                    val message = error.message ?: "Unable to load ranking data."
+                    updateState {
+                        it.copy(
+                            isLoading = false,
+                            rankings = cachedRankings,
+                            error = message
+                        )
+                    }
+                    emitEffect(RankingEffect.ShowMessage(message))
+                }
+        }
+    }
+
+    override fun onCleared() {
+        store.close()
+        super.onCleared()
     }
 }
 

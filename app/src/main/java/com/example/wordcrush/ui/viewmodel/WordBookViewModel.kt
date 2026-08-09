@@ -3,118 +3,146 @@ package com.example.wordcrush.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.wordcrush.data.model.WordItem
-import com.example.wordcrush.data.repository.WordRepository
-import com.example.wordcrush.ui.model.MatchGameEvent
+import com.example.wordcrush.domain.usecase.SearchWordsUseCase
+import com.example.wordcrush.domain.usecase.UpdateWordMasteryUseCase
+import com.example.wordcrush.domain.usecase.WordFilter as DomainWordFilter
+import com.example.wordcrush.ui.architecture.UdfStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-enum class WordFilter {
-    ALL,
-    MASTERED,
-    UNMASTERED
+typealias WordFilter = DomainWordFilter
+
+sealed interface WordBookAction {
+    data object Refresh : WordBookAction
+    data class QueryChanged(val value: String) : WordBookAction
+    data class FilterChanged(val filter: WordFilter) : WordBookAction
+    data object ApplySearch : WordBookAction
+    data object LoadMore : WordBookAction
+    data class MasteryChanged(val word: WordItem, val isMastered: Boolean) : WordBookAction
+    data class PlayAudio(val word: WordItem, val type: Int) : WordBookAction
+}
+
+sealed interface WordBookEffect {
+    data class PlayAudio(val word: String, val type: Int) : WordBookEffect
 }
 
 @HiltViewModel
 class WordBookViewModel @Inject constructor(
-    private val wordRepository: WordRepository
+    private val searchWordsUseCase: SearchWordsUseCase,
+    private val updateWordMasteryUseCase: UpdateWordMasteryUseCase
 ) : ViewModel() {
     private companion object {
         const val PAGE_SIZE = 40
     }
 
-    private val _uiState = MutableStateFlow(WordBookUiState())
-    val uiState: StateFlow<WordBookUiState> = _uiState.asStateFlow()
-
-    private val _event = MutableSharedFlow<MatchGameEvent>()
-    val event: SharedFlow<MatchGameEvent> = _event.asSharedFlow()
-    private var filteredWords: List<WordItem> = emptyList()
+    private var matchingWords: List<WordItem> = emptyList()
     private var searchJob: Job? = null
 
+    private val store = UdfStore<WordBookUiState, WordBookEffect>(WordBookUiState())
+    val uiState = store.uiState
+    val effect = store.effect
+
+    private val currentState: WordBookUiState
+        get() = store.currentState
+
+    private fun updateState(transform: (WordBookUiState) -> WordBookUiState) = store.updateState(transform)
+    private fun emitEffect(effect: WordBookEffect) = store.emitEffect(effect)
+
     init {
-        refresh()
+        onAction(WordBookAction.Refresh)
     }
 
-    fun refresh() {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, isAppending = false)
-            val words = loadByCurrentFilter(_uiState.value.query, _uiState.value.filter)
-            filteredWords = words
-            val initialWords = filteredWords.take(PAGE_SIZE)
-            _uiState.value = _uiState.value.copy(
-                isLoading = false,
-                words = initialWords,
-                canLoadMore = initialWords.size < filteredWords.size
+    fun onAction(action: WordBookAction) {
+        when (action) {
+            WordBookAction.Refresh -> refresh()
+            is WordBookAction.QueryChanged -> {
+                updateState { it.copy(query = action.value) }
+                scheduleSearch()
+            }
+            is WordBookAction.FilterChanged -> {
+                updateState { it.copy(filter = action.filter) }
+                searchJob?.cancel()
+                refresh()
+            }
+            WordBookAction.ApplySearch -> {
+                searchJob?.cancel()
+                refresh()
+            }
+            WordBookAction.LoadMore -> loadMore()
+            is WordBookAction.MasteryChanged -> updateMastery(action.word, action.isMastered)
+            is WordBookAction.PlayAudio -> emitEffect(
+                WordBookEffect.PlayAudio(action.word.english, action.type)
             )
-            updateEmptyState()
         }
     }
 
-    fun updateQuery(query: String) {
-        _uiState.value = _uiState.value.copy(query = query)
-        scheduleSearch()
-    }
-
-    fun applySearch() {
-        searchJob?.cancel()
-        refresh()
-    }
-
-    fun updateFilter(filter: WordFilter) {
-        _uiState.value = _uiState.value.copy(filter = filter)
-        searchJob?.cancel()
-        refresh()
-    }
-
-    fun updateMastery(word: WordItem, isMastered: Boolean) {
+    private fun refresh() {
+        val query = currentState.query
+        val filter = currentState.filter
         viewModelScope.launch {
-            val updatedWord = wordRepository.updateWordMastered(word.id, isMastered) ?: return@launch
-            filteredWords = filteredWords.mapNotNull { currentWord ->
+            updateState { it.copy(isLoading = true, isAppending = false) }
+            runCatching { searchWordsUseCase(query, filter) }
+                .onSuccess { words ->
+                    matchingWords = words
+                    val visibleWords = words.take(PAGE_SIZE)
+                    updateState {
+                        it.copy(
+                            isLoading = false,
+                            words = visibleWords,
+                            canLoadMore = visibleWords.size < words.size
+                        ).withEmptyState()
+                    }
+                }
+                .onFailure { error ->
+                    updateState {
+                        it.copy(
+                            isLoading = false,
+                            words = emptyList(),
+                            canLoadMore = false,
+                            emptyStateTitle = "Unable to load words",
+                            emptyStateMessage = error.message ?: "Unable to load words."
+                        )
+                    }
+                }
+        }
+    }
+
+    private fun updateMastery(word: WordItem, isMastered: Boolean) {
+        viewModelScope.launch {
+            val updatedWord = updateWordMasteryUseCase(word.id, isMastered) ?: return@launch
+            matchingWords = matchingWords.mapNotNull { currentWord ->
                 when {
                     currentWord.id != updatedWord.id -> currentWord
-                    shouldKeepWordInCurrentFilter(updatedWord, _uiState.value.filter) -> updatedWord
+                    shouldKeepWordInCurrentFilter(updatedWord, currentState.filter) -> updatedWord
                     else -> null
                 }
             }
-
-            val currentVisibleCount = _uiState.value.words.size
-            val nextVisibleCount = minOf(currentVisibleCount, filteredWords.size)
-            _uiState.value = _uiState.value.copy(
-                words = filteredWords.take(nextVisibleCount),
-                canLoadMore = nextVisibleCount < filteredWords.size
-            )
-            updateEmptyState()
+            val visibleCount = minOf(currentState.words.size, matchingWords.size)
+            updateState {
+                it.copy(
+                    words = matchingWords.take(visibleCount),
+                    canLoadMore = visibleCount < matchingWords.size
+                ).withEmptyState()
+            }
         }
     }
 
-    fun playAudio(word: WordItem, type: Int) {
+    private fun loadMore() {
+        val state = currentState
+        if (state.isLoading || state.isAppending || !state.canLoadMore) return
         viewModelScope.launch {
-            _event.emit(MatchGameEvent.PlayAudio(word.english, type))
-        }
-    }
-
-    fun loadMore() {
-        val currentState = _uiState.value
-        if (currentState.isLoading || currentState.isAppending || !currentState.canLoadMore) {
-            return
-        }
-
-        viewModelScope.launch {
-            _uiState.value = currentState.copy(isAppending = true)
-            val nextCount = minOf(currentState.words.size + PAGE_SIZE, filteredWords.size)
-            _uiState.value = _uiState.value.copy(
-                words = filteredWords.take(nextCount),
-                isAppending = false,
-                canLoadMore = nextCount < filteredWords.size
-            )
+            updateState { it.copy(isAppending = true) }
+            val nextCount = minOf(state.words.size + PAGE_SIZE, matchingWords.size)
+            updateState {
+                it.copy(
+                    words = matchingWords.take(nextCount),
+                    isAppending = false,
+                    canLoadMore = nextCount < matchingWords.size
+                )
+            }
         }
     }
 
@@ -126,16 +154,23 @@ class WordBookViewModel @Inject constructor(
         }
     }
 
-    private fun updateEmptyState() {
-        val query = _uiState.value.query.trim()
-        val filter = _uiState.value.filter
+    private fun shouldKeepWordInCurrentFilter(word: WordItem, filter: WordFilter): Boolean {
+        return when (filter) {
+            WordFilter.ALL -> true
+            WordFilter.MASTERED -> word.isMastered
+            WordFilter.UNMASTERED -> !word.isMastered
+        }
+    }
+
+    private fun WordBookUiState.withEmptyState(): WordBookUiState {
+        val normalizedQuery = query.trim()
         val (title, message) = when {
-            query.isNotBlank() && filter == WordFilter.ALL ->
-                "No search results" to "No words match \"$query\". Try another keyword."
-            query.isNotBlank() && filter == WordFilter.MASTERED ->
-                "No remembered words found" to "No remembered words match \"$query\"."
-            query.isNotBlank() && filter == WordFilter.UNMASTERED ->
-                "No learning words found" to "No learning words match \"$query\"."
+            normalizedQuery.isNotBlank() && filter == WordFilter.ALL ->
+                "No search results" to "No words match \"$normalizedQuery\". Try another keyword."
+            normalizedQuery.isNotBlank() && filter == WordFilter.MASTERED ->
+                "No remembered words found" to "No remembered words match \"$normalizedQuery\"."
+            normalizedQuery.isNotBlank() && filter == WordFilter.UNMASTERED ->
+                "No learning words found" to "No learning words match \"$normalizedQuery\"."
             filter == WordFilter.MASTERED ->
                 "No remembered words yet" to "Words marked as remembered will appear here."
             filter == WordFilter.UNMASTERED ->
@@ -143,37 +178,13 @@ class WordBookViewModel @Inject constructor(
             else ->
                 "No words found" to "Your word book is empty right now."
         }
-        _uiState.value = _uiState.value.copy(
-            emptyStateTitle = title,
-            emptyStateMessage = message
-        )
+        return copy(emptyStateTitle = title, emptyStateMessage = message)
     }
 
-    private suspend fun loadByCurrentFilter(query: String, filter: WordFilter): List<WordItem> {
-        val baseWords = when (filter) {
-            WordFilter.ALL -> wordRepository.getWords()
-            WordFilter.MASTERED -> wordRepository.getWordsByMastered(true)
-            WordFilter.UNMASTERED -> wordRepository.getWordsByMastered(false)
-        }
-
-        val normalizedQuery = query.trim()
-        if (normalizedQuery.isBlank()) {
-            return baseWords
-        }
-
-        return baseWords.filter { word ->
-            word.english.contains(normalizedQuery, ignoreCase = true) ||
-                word.chinese.contains(normalizedQuery, ignoreCase = true) ||
-                word.pronunciation.contains(normalizedQuery, ignoreCase = true)
-        }
-    }
-
-    private fun shouldKeepWordInCurrentFilter(word: WordItem, filter: WordFilter): Boolean {
-        return when (filter) {
-            WordFilter.ALL -> true
-            WordFilter.MASTERED -> word.isMastered
-            WordFilter.UNMASTERED -> !word.isMastered
-        }
+    override fun onCleared() {
+        searchJob?.cancel()
+        store.close()
+        super.onCleared()
     }
 }
 

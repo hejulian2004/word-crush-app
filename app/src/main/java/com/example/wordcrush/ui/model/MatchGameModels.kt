@@ -13,6 +13,29 @@ enum class MatchCardFeedback {
     MISMATCH
 }
 
+enum class MatchMode(
+    val gameType: Int,
+    val title: String,
+    val subtitle: String,
+    val emptyTitle: String,
+    val emptyMessage: String
+) {
+    CLASSIC(
+        gameType = 0,
+        title = "Match Challenge",
+        subtitle = "Choose a mode, then start.",
+        emptyTitle = "Ready to start",
+        emptyMessage = "Tap start to load a fresh set of words for classic mode."
+    ),
+    TIMED(
+        gameType = 1,
+        title = "Timed Match",
+        subtitle = "Choose a mode, then start.",
+        emptyTitle = "Ready to start",
+        emptyMessage = "The timer begins only after you tap start."
+    )
+}
+
 data class MatchCardUiModel(
     val id: Int,
     val wordId: Int,
@@ -29,12 +52,6 @@ data class MatchRound(
     val cards: List<MatchCardUiModel>,
     val nextCursor: Int
 )
-
-sealed interface MatchGameEvent {
-    data class Message(val text: String) : MatchGameEvent
-    data class PlayAudio(val word: String, val type: Int = 1) : MatchGameEvent
-    data class GameOver(val score: Int, val message: String) : MatchGameEvent
-}
 
 internal fun buildMatchRound(words: List<WordItem>, startCursor: Int, pairCount: Int = 6): MatchRound? {
     if (words.isEmpty()) return null

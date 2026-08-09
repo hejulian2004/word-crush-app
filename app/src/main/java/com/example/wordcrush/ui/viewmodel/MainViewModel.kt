@@ -2,83 +2,104 @@ package com.example.wordcrush.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.wordcrush.data.repository.AccountRepository
-import com.example.wordcrush.data.session.SessionManager
-import com.example.wordcrush.utils.LogUtils
+import com.example.wordcrush.domain.usecase.LogoutUseCase
+import com.example.wordcrush.domain.usecase.ObserveSessionUseCase
+import com.example.wordcrush.domain.usecase.ValidateSessionUseCase
+import com.example.wordcrush.ui.architecture.UdfStore
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import javax.inject.Inject
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import javax.inject.Inject
+
+sealed interface MainAction {
+    data object Initialize : MainAction
+    data object RefreshSession : MainAction
+}
+
+sealed interface MainEffect {
+    data class ShowMessage(val message: String) : MainEffect
+}
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    private val accountRepository: AccountRepository,
-    private val sessionManager: SessionManager
+    private val validateSessionUseCase: ValidateSessionUseCase,
+    private val logoutUseCase: LogoutUseCase,
+    private val observeSessionUseCase: ObserveSessionUseCase
 ) : ViewModel() {
+    private val store = UdfStore<MainUiState, MainEffect>(MainUiState())
+    val uiState = store.uiState
+    val effect = store.effect
 
-    private val _uiState = MutableStateFlow(MainUiState())
-    val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
+    private val currentState: MainUiState
+        get() = store.currentState
 
-    private val _navigationEvent = MutableStateFlow<SessionNavigationEvent?>(null)
-    val navigationEvent: StateFlow<SessionNavigationEvent?> = _navigationEvent.asStateFlow()
+    private fun updateState(transform: (MainUiState) -> MainUiState) = store.updateState(transform)
+    private fun setState(state: MainUiState) = store.setState(state)
+    private fun emitEffect(effect: MainEffect) = store.emitEffect(effect)
+    private fun launchAction(block: suspend () -> Unit) {
+        viewModelScope.launch { block() }
+    }
 
     init {
         viewModelScope.launch {
-            sessionManager.sessionExpiredEvent.collectLatest { message ->
-                _navigationEvent.value = SessionNavigationEvent.NavigateToLogin
-                _uiState.value = MainUiState(
-                    error = message,
-                    hasCheckedSession = true
-                )
-            }
-        }
-    }
-
-    fun validateTokenAndInit() {
-        viewModelScope.launch {
-            _uiState.value = MainUiState(isLoading = true, hasCheckedSession = false)
-            try {
-                sessionManager.restore()
-                if (sessionManager.currentToken.isNullOrBlank()) {
-                    _navigationEvent.value = SessionNavigationEvent.NavigateToLogin
-                    _uiState.value = MainUiState(hasCheckedSession = true)
-                    return@launch
+            observeSessionUseCase().collectLatest { session ->
+                updateState {
+                    it.copy(
+                        isLoggedIn = session.isLoggedIn,
+                        hasCheckedSession = if (it.hasCheckedSession) it.hasCheckedSession else false
+                    )
                 }
-
-                accountRepository.checkToken().fold(
-                    onSuccess = {
-                        _uiState.value = MainUiState(
-                            isLoggedIn = true,
-                            hasCheckedSession = true
-                        )
-                    },
-                    onFailure = { error ->
-                        LogUtils.e("Token validation failed", error)
-                        accountRepository.logout()
-                        _navigationEvent.value = SessionNavigationEvent.NavigateToLogin
-                        _uiState.value = MainUiState(
-                            error = error.message,
-                            hasCheckedSession = true
-                        )
-                    }
-                )
-            } catch (error: Exception) {
-                LogUtils.e("Main initialization failed", error)
-                accountRepository.logout()
-                _navigationEvent.value = SessionNavigationEvent.NavigateToLogin
-                _uiState.value = MainUiState(
-                    error = error.message,
-                    hasCheckedSession = true
-                )
+            }
+        }
+        viewModelScope.launch {
+            observeSessionUseCase.expiredMessages().collectLatest { message ->
+                updateState { it.copy(isLoggedIn = false, hasCheckedSession = true, isLoading = false) }
+                emitEffect(MainEffect.ShowMessage(message))
             }
         }
     }
 
-    fun resetNavigationEvent() {
-        _navigationEvent.value = null
+    fun onAction(action: MainAction) {
+        when (action) {
+            MainAction.Initialize,
+            MainAction.RefreshSession -> refreshSession()
+        }
+    }
+
+    private fun refreshSession() {
+        launchAction {
+            setState(currentState.copy(isLoading = true, hasCheckedSession = false, error = null))
+            validateSessionUseCase()
+                .onSuccess { isLoggedIn ->
+                    setState(
+                        MainUiState(
+                            isLoading = false,
+                            isLoggedIn = isLoggedIn,
+                            hasCheckedSession = true
+                        )
+                    )
+                }
+                .onFailure { error ->
+                    logoutUseCase()
+                    val message = error.message
+                    setState(
+                        MainUiState(
+                            isLoading = false,
+                            isLoggedIn = false,
+                            hasCheckedSession = true,
+                            error = message
+                        )
+                    )
+                    if (!message.isNullOrBlank()) {
+                        emitEffect(MainEffect.ShowMessage(message))
+                    }
+                }
+        }
+    }
+
+    override fun onCleared() {
+        store.close()
+        super.onCleared()
     }
 }
 

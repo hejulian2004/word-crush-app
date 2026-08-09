@@ -42,7 +42,6 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.tween
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -55,37 +54,14 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.wordcrush.R
-import com.example.wordcrush.ui.model.MatchGameEvent
 import com.example.wordcrush.ui.model.MatchCardType
 import com.example.wordcrush.ui.model.MatchCardUiModel
 import com.example.wordcrush.ui.model.MatchCardFeedback
-import com.example.wordcrush.ui.viewmodel.BreakthroughUiState
-import com.example.wordcrush.ui.viewmodel.BreakthroughViewModel
-import com.example.wordcrush.ui.viewmodel.TimeLimitUiState
-import com.example.wordcrush.ui.viewmodel.TimeLimitViewModel
-
-private enum class MatchMode(
-    val title: String,
-    val subtitle: String,
-    val gameType: Int,
-    val emptyTitle: String,
-    val emptyMessage: String
-) {
-    CLASSIC(
-        title = "Match Challenge",
-        subtitle = "Choose a mode, then start.",
-        gameType = 0,
-        emptyTitle = "Ready to start",
-        emptyMessage = "Tap start to load a fresh set of words for classic mode."
-    ),
-    TIMED(
-        title = "Timed Match",
-        subtitle = "Choose a mode, then start.",
-        gameType = 1,
-        emptyTitle = "Ready to start",
-        emptyMessage = "The timer begins only after you tap start."
-    )
-}
+import com.example.wordcrush.ui.model.MatchMode
+import com.example.wordcrush.ui.viewmodel.MatchAction
+import com.example.wordcrush.ui.viewmodel.MatchEffect
+import com.example.wordcrush.ui.viewmodel.MatchSessionUiState
+import com.example.wordcrush.ui.viewmodel.MatchViewModel
 
 @Composable
 internal fun MatchRoute(
@@ -94,33 +70,18 @@ internal fun MatchRoute(
     onOpenRanking: (Int) -> Unit
 ) {
     val dims = appDimens()
-    val breakthroughViewModel: BreakthroughViewModel = hiltViewModel()
-    val breakthroughUiState by breakthroughViewModel.uiState.collectAsStateWithLifecycle()
-    val timeLimitViewModel: TimeLimitViewModel = hiltViewModel()
-    val timeLimitUiState by timeLimitViewModel.uiState.collectAsStateWithLifecycle()
-    var selectedMode by rememberSaveable { androidx.compose.runtime.mutableStateOf(MatchMode.CLASSIC) }
-    var showStopConfirmDialog by rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
-    val isCurrentGameStarted = when (selectedMode) {
-        MatchMode.CLASSIC -> breakthroughUiState.hasStarted
-        MatchMode.TIMED -> timeLimitUiState.hasStarted
-    }
+    val viewModel: MatchViewModel = hiltViewModel()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val selectedMode = uiState.selectedMode
+    val activeUiState = uiState.session(selectedMode)
+    val isCurrentGameStarted = activeUiState.hasStarted
 
-    LaunchedEffect(Unit) {
-        breakthroughViewModel.event.collect { event ->
-            when (event) {
-                is MatchGameEvent.Message -> onShowMessage(event.text)
-                is MatchGameEvent.PlayAudio -> onPlayAudio(event.word, event.type)
-                is MatchGameEvent.GameOver -> Unit
-            }
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        timeLimitViewModel.event.collect { event ->
-            when (event) {
-                is MatchGameEvent.Message -> onShowMessage(event.text)
-                is MatchGameEvent.PlayAudio -> onPlayAudio(event.word, event.type)
-                is MatchGameEvent.GameOver -> Unit
+    LaunchedEffect(viewModel) {
+        viewModel.effect.collect { effect ->
+            when (effect) {
+                is MatchEffect.ShowMessage -> onShowMessage(effect.message)
+                is MatchEffect.PlayAudio -> onPlayAudio(effect.word, effect.type)
+                is MatchEffect.OpenRanking -> onOpenRanking(effect.gameType)
             }
         }
     }
@@ -130,24 +91,17 @@ internal fun MatchRoute(
         subtitle = selectedMode.subtitle,
         showHeader = !isCurrentGameStarted,
         showStats = isCurrentGameStarted,
-        score = if (selectedMode == MatchMode.CLASSIC) breakthroughUiState.score else timeLimitUiState.score,
-        hearts = if (selectedMode == MatchMode.CLASSIC) breakthroughUiState.hearts else timeLimitUiState.hearts,
-        extra = if (selectedMode == MatchMode.TIMED) "${timeLimitUiState.remainingSeconds}s" else null,
-        onPrimaryAction = {
-            when (selectedMode) {
-                MatchMode.CLASSIC -> breakthroughViewModel.restartGame()
-                MatchMode.TIMED -> timeLimitViewModel.startGame()
-            }
-        },
+        score = activeUiState.score,
+        hearts = activeUiState.hearts,
+        extra = if (selectedMode == MatchMode.TIMED) "${activeUiState.remainingSeconds}s" else null,
+        onPrimaryAction = { viewModel.onAction(MatchAction.StartOrRestart) },
         primaryActionLabel = when (selectedMode) {
-            MatchMode.CLASSIC -> if (breakthroughUiState.hasStarted) "Restart" else "Start"
-            MatchMode.TIMED -> if (timeLimitUiState.hasStarted) "Restart" else "Start"
+            MatchMode.CLASSIC -> if (activeUiState.hasStarted) "Restart" else "Start"
+            MatchMode.TIMED -> if (activeUiState.hasStarted) "Restart" else "Start"
         },
-        onStopAction = {
-            showStopConfirmDialog = true
-        },
+        onStopAction = { viewModel.onAction(MatchAction.RequestStop) },
         stopVisible = isCurrentGameStarted,
-        onSecondaryAction = { onOpenRanking(selectedMode.gameType) },
+        onSecondaryAction = { viewModel.onAction(MatchAction.OpenRanking) },
         secondaryActionLabel = "Ranking",
         topControls = {
             if (!isCurrentGameStarted) {
@@ -159,7 +113,7 @@ internal fun MatchRoute(
                         val selected = selectedMode == mode
                         if (selected) {
                             Button(
-                                onClick = { selectedMode = mode },
+                                onClick = { viewModel.onAction(MatchAction.ModeSelected(mode)) },
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(dims.buttonHeight)
@@ -168,7 +122,7 @@ internal fun MatchRoute(
                             }
                         } else {
                             OutlinedButton(
-                                onClick = { selectedMode = mode },
+                                onClick = { viewModel.onAction(MatchAction.ModeSelected(mode)) },
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(dims.buttonHeight)
@@ -196,9 +150,9 @@ internal fun MatchRoute(
                     ) {
                         Text(
                             text = if (selectedMode == MatchMode.CLASSIC) {
-                                "Today: ${breakthroughUiState.masteredTodayCount}/${breakthroughUiState.todayWordCount}"
+                                "Today: ${activeUiState.masteredTodayCount}/${activeUiState.todayWordCount}"
                             } else {
-                                "Today: ${timeLimitUiState.masteredTodayCount}/${timeLimitUiState.todayWordCount}"
+                                "Today: ${activeUiState.masteredTodayCount}/${activeUiState.todayWordCount}"
                             },
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
@@ -207,9 +161,9 @@ internal fun MatchRoute(
                 }
                 LearnedWordsSummaryCard(
                     summaries = if (selectedMode == MatchMode.CLASSIC) {
-                        breakthroughUiState.learnedWordSummaries
+                        activeUiState.learnedWordSummaries
                     } else {
-                        timeLimitUiState.learnedWordSummaries
+                        activeUiState.learnedWordSummaries
                     }
                 )
             }
@@ -217,86 +171,79 @@ internal fun MatchRoute(
     ) {
         if (isCurrentGameStarted) {
             LatestMatchedWordCard(
-                word = if (selectedMode == MatchMode.CLASSIC) {
-                    breakthroughUiState.latestMatchedWord
-                } else {
-                    timeLimitUiState.latestMatchedWord
-                },
+                word = activeUiState.latestMatchedWord,
                 onMarkUnremembered = {
-                    when (selectedMode) {
-                        MatchMode.CLASSIC -> breakthroughViewModel.markLatestWordUnremembered()
-                        MatchMode.TIMED -> timeLimitViewModel.markLatestWordUnremembered()
-                    }
+                    viewModel.onAction(MatchAction.MarkLatestWordUnremembered)
                 }
             )
         }
 
         when (selectedMode) {
             MatchMode.CLASSIC -> {
-                if (!breakthroughUiState.hasStarted || !breakthroughUiState.gameVisible) {
+                if (!activeUiState.hasStarted || !activeUiState.gameVisible) {
                     EmptyStateCard(
-                        title = if (breakthroughUiState.statusTitle == "Today's fixed set") {
+                        title = if (activeUiState.statusTitle == "Today's fixed set") {
                             selectedMode.emptyTitle
                         } else {
-                            breakthroughUiState.statusTitle
+                            activeUiState.statusTitle
                         },
-                        message = if (breakthroughUiState.statusTitle == "Today's fixed set") {
+                        message = if (activeUiState.statusTitle == "Today's fixed set") {
                             selectedMode.emptyMessage
                         } else {
-                            breakthroughUiState.statusMessage
+                            activeUiState.statusMessage
                         }
                     )
                 } else {
                     MatchGameContent(
-                        uiState = breakthroughUiState,
-                        onCardClick = breakthroughViewModel::onCardClicked,
-                        onPronunciationClick = breakthroughViewModel::playAudioForWord
+                        uiState = activeUiState,
+                        onCardClick = { viewModel.onAction(MatchAction.CardClicked(it)) },
+                        onPronunciationClick = { viewModel.onAction(MatchAction.PlayAudio(it)) }
                     )
                 }
             }
             MatchMode.TIMED -> {
-                if (!timeLimitUiState.hasStarted || !timeLimitUiState.gameVisible) {
+                if (!activeUiState.hasStarted || !activeUiState.gameVisible) {
                     EmptyStateCard(
-                        title = if (timeLimitUiState.statusTitle == "Today's fixed set") {
+                        title = if (activeUiState.statusTitle == "Today's fixed set") {
                             selectedMode.emptyTitle
                         } else {
-                            timeLimitUiState.statusTitle
+                            activeUiState.statusTitle
                         },
-                        message = if (timeLimitUiState.statusTitle == "Today's fixed set") {
+                        message = if (activeUiState.statusTitle == "Today's fixed set") {
                             selectedMode.emptyMessage
                         } else {
-                            timeLimitUiState.statusMessage
+                            activeUiState.statusMessage
                         }
                     )
                 } else {
                     MatchGameContent(
-                        uiState = timeLimitUiState,
-                        onCardClick = timeLimitViewModel::onCardClicked,
-                        onPronunciationClick = timeLimitViewModel::playAudioForWord
+                        uiState = activeUiState,
+                        onCardClick = { viewModel.onAction(MatchAction.CardClicked(it)) },
+                        onPronunciationClick = { viewModel.onAction(MatchAction.PlayAudio(it)) }
                     )
                 }
             }
         }
     }
 
-    if (breakthroughUiState.gameOverMessage != null && breakthroughUiState.gameOverScore != null) {
+    if (selectedMode == MatchMode.CLASSIC && activeUiState.gameOverMessage != null && activeUiState.gameOverScore != null) {
         AlertDialog(
             onDismissRequest = {
-                breakthroughViewModel.clearGameOverDialog()
+                viewModel.onAction(MatchAction.ClearGameOver)
             },
             title = { Text("Round complete") },
-            text = { Text("${breakthroughUiState.gameOverMessage}\nScore: ${breakthroughUiState.gameOverScore}") },
+            text = { Text("${activeUiState.gameOverMessage}\nScore: ${activeUiState.gameOverScore}") },
             confirmButton = {
                 Button(onClick = {
-                    breakthroughViewModel.clearGameOverDialog()
-                    breakthroughViewModel.restartGame()
+                    viewModel.onAction(MatchAction.ClearGameOver)
+                    viewModel.onAction(MatchAction.StartOrRestart)
                 }) {
                     Text("Play again")
                 }
             },
             dismissButton = {
                 TextButton(onClick = {
-                    breakthroughViewModel.clearGameOverDialog()
+                    viewModel.onAction(MatchAction.ClearGameOver)
                 }) {
                     Text("Close")
                 }
@@ -304,24 +251,24 @@ internal fun MatchRoute(
         )
     }
 
-    if (timeLimitUiState.gameOverMessage != null && timeLimitUiState.gameOverScore != null) {
+    if (selectedMode == MatchMode.TIMED && activeUiState.gameOverMessage != null && activeUiState.gameOverScore != null) {
         AlertDialog(
             onDismissRequest = {
-                timeLimitViewModel.clearGameOverDialog()
+                viewModel.onAction(MatchAction.ClearGameOver)
             },
             title = { Text("Time's up") },
-            text = { Text("${timeLimitUiState.gameOverMessage}\nScore: ${timeLimitUiState.gameOverScore}") },
+            text = { Text("${activeUiState.gameOverMessage}\nScore: ${activeUiState.gameOverScore}") },
             confirmButton = {
                 Button(onClick = {
-                    timeLimitViewModel.clearGameOverDialog()
-                    timeLimitViewModel.startGame()
+                    viewModel.onAction(MatchAction.ClearGameOver)
+                    viewModel.onAction(MatchAction.StartOrRestart)
                 }) {
                     Text("Play again")
                 }
             },
             dismissButton = {
                 TextButton(onClick = {
-                    timeLimitViewModel.clearGameOverDialog()
+                    viewModel.onAction(MatchAction.ClearGameOver)
                 }) {
                     Text("Close")
                 }
@@ -329,24 +276,20 @@ internal fun MatchRoute(
         )
     }
 
-    if (showStopConfirmDialog) {
+    if (uiState.showStopConfirmDialog) {
         AlertDialog(
-            onDismissRequest = { showStopConfirmDialog = false },
+            onDismissRequest = { viewModel.onAction(MatchAction.DismissStop) },
             title = { Text("End current game?") },
             text = { Text("Stopping now will save the current game record and end this round.") },
             confirmButton = {
                 Button(onClick = {
-                    showStopConfirmDialog = false
-                    when (selectedMode) {
-                        MatchMode.CLASSIC -> breakthroughViewModel.endGameEarly()
-                        MatchMode.TIMED -> timeLimitViewModel.endGameEarly()
-                    }
+                    viewModel.onAction(MatchAction.ConfirmStop)
                 }) {
                     Text("Stop")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showStopConfirmDialog = false }) {
+                TextButton(onClick = { viewModel.onAction(MatchAction.DismissStop) }) {
                     Text("Cancel")
                 }
             }
@@ -629,27 +572,7 @@ private fun LivesStatCard(
 
 @Composable
 private fun MatchGameContent(
-    uiState: BreakthroughUiState,
-    onCardClick: (Int) -> Unit,
-    onPronunciationClick: (Int) -> Unit
-) {
-    when {
-        uiState.isLoading -> LoadingSection()
-        uiState.cards.isEmpty() -> EmptyStateCard(
-            title = uiState.statusTitle,
-            message = uiState.statusMessage
-        )
-        else -> MatchCardGrid(
-            cards = uiState.cards,
-            onCardClick = onCardClick,
-            onPronunciationClick = onPronunciationClick
-        )
-    }
-}
-
-@Composable
-private fun MatchGameContent(
-    uiState: TimeLimitUiState,
+    uiState: MatchSessionUiState,
     onCardClick: (Int) -> Unit,
     onPronunciationClick: (Int) -> Unit
 ) {

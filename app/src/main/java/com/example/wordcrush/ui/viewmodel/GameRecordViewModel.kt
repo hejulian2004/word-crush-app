@@ -3,60 +3,114 @@ package com.example.wordcrush.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.wordcrush.data.model.GameRecordItem
-import com.example.wordcrush.data.repository.GameRecordRepository
-import com.example.wordcrush.ui.model.MatchGameEvent
+import com.example.wordcrush.domain.usecase.DeleteGameRecordUseCase
+import com.example.wordcrush.domain.usecase.GetGameRecordsUseCase
+import com.example.wordcrush.ui.architecture.UdfStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+sealed interface GameRecordAction {
+    data object Load : GameRecordAction
+    data class ToggleExpanded(val recordId: Int) : GameRecordAction
+    data class RequestDelete(val record: GameRecordItem) : GameRecordAction
+    data object ConfirmDelete : GameRecordAction
+    data object DismissDelete : GameRecordAction
+}
+
+sealed interface GameRecordEffect {
+    data class ShowMessage(val message: String) : GameRecordEffect
+}
 
 @HiltViewModel
 class GameRecordViewModel @Inject constructor(
-    private val gameRecordRepository: GameRecordRepository
+    private val getGameRecordsUseCase: GetGameRecordsUseCase,
+    private val deleteGameRecordUseCase: DeleteGameRecordUseCase
 ) : ViewModel() {
+    private val store = UdfStore<GameRecordUiState, GameRecordEffect>(GameRecordUiState())
+    val uiState = store.uiState
+    val effect = store.effect
 
-    private val _uiState = MutableStateFlow(GameRecordUiState())
-    val uiState: StateFlow<GameRecordUiState> = _uiState.asStateFlow()
+    private val currentState: GameRecordUiState
+        get() = store.currentState
 
-    private val _event = MutableSharedFlow<MatchGameEvent>()
-    val event: SharedFlow<MatchGameEvent> = _event.asSharedFlow()
+    private fun updateState(transform: (GameRecordUiState) -> GameRecordUiState) = store.updateState(transform)
+    private fun emitEffect(effect: GameRecordEffect) = store.emitEffect(effect)
+    private fun launchAction(block: suspend () -> Unit) {
+        viewModelScope.launch { block() }
+    }
 
-    fun loadGameRecords() {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-            runCatching { gameRecordRepository.getLocalRecords() }
+    fun onAction(action: GameRecordAction) {
+        when (action) {
+            GameRecordAction.Load -> load()
+            is GameRecordAction.ToggleExpanded -> updateState {
+                it.copy(
+                    expandedRecordId = if (it.expandedRecordId == action.recordId) {
+                        null
+                    } else {
+                        action.recordId
+                    }
+                )
+            }
+            is GameRecordAction.RequestDelete -> updateState {
+                it.copy(pendingDelete = action.record)
+            }
+            GameRecordAction.ConfirmDelete -> confirmDelete()
+            GameRecordAction.DismissDelete -> updateState { it.copy(pendingDelete = null) }
+        }
+    }
+
+    private fun load() {
+        launchAction {
+            updateState { it.copy(isLoading = true, error = null) }
+            runCatching { getGameRecordsUseCase() }
                 .onSuccess { records ->
-                    _uiState.value = GameRecordUiState(records = records)
+                    updateState { it.copy(isLoading = false, records = records) }
                 }
                 .onFailure { error ->
-                    _uiState.value = GameRecordUiState(
-                        error = error.message ?: "Unable to load game records."
-                    )
+                    updateState {
+                        it.copy(
+                            isLoading = false,
+                            error = error.message ?: "Unable to load game records."
+                        )
+                    }
+                    emitEffect(GameRecordEffect.ShowMessage(
+                        error.message ?: "Unable to load game records."
+                    ))
                 }
         }
     }
 
-    fun deleteRecord(record: GameRecordItem) {
-        viewModelScope.launch {
-            gameRecordRepository.deleteRecord(record)
+    private fun confirmDelete() {
+        val record = currentState.pendingDelete ?: return
+        launchAction {
+            updateState { it.copy(isDeleting = true, pendingDelete = null) }
+            deleteGameRecordUseCase(record)
                 .onSuccess {
-                    _event.emit(MatchGameEvent.Message("Record deleted."))
-                    loadGameRecords()
+                    updateState { it.copy(isDeleting = false) }
+                    emitEffect(GameRecordEffect.ShowMessage("Record deleted."))
+                    load()
                 }
                 .onFailure { error ->
-                    _event.emit(MatchGameEvent.Message(error.message ?: "Unable to delete record."))
+                    updateState { it.copy(isDeleting = false) }
+                    emitEffect(GameRecordEffect.ShowMessage(
+                        error.message ?: "Unable to delete record."
+                    ))
                 }
         }
+    }
+
+    override fun onCleared() {
+        store.close()
+        super.onCleared()
     }
 }
 
 data class GameRecordUiState(
     val isLoading: Boolean = false,
+    val isDeleting: Boolean = false,
     val records: List<GameRecordItem> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
+    val expandedRecordId: Int? = null,
+    val pendingDelete: GameRecordItem? = null
 )
