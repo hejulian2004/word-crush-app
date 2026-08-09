@@ -8,7 +8,7 @@ import type {
   LoginResponse,
 } from './types'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? './api'
 const TOKEN_KEY = 'word-crush-admin-token'
 
 export class ApiError extends Error {
