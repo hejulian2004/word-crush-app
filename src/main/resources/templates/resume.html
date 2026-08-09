@@ -313,16 +313,19 @@
 
           <div class="item">
             <div class="item-head">
-              <div class="item-title"><a href="https://github.com/2949282402/word-crush-app">WordCrush App</a> ｜ Android 客户端开发</div>
-              <div class="date">2026.02 - 2026.04</div>
+              <div class="item-title"><a href="https://github.com/2949282402/hejulian-web">HeJulian Blog 智能博客系统</a> ｜ 全栈开发 / RAG 知识库工程</div>
+              <div class="date">2026.03 - 2026.04</div>
             </div>
-            <div class="item-subtitle">技术栈：Kotlin / Jetpack Compose / Retrofit / OkHttp / Room / DataStore</div>
+            <div class="item-subtitle">技术栈：Vue 3 / Vite / Element Plus / Spring Boot 3 / MyBatis / MySQL / Redis / JWT / Docker Compose / Qdrant / SSE / RAG</div>
             <ul>
-              <li>基于 Retrofit + OkHttp 封装网络层，统一注入 Authorization token，实现登录态校验、401 自动失效处理与会话重建，完善客户端认证链路。</li>
-              <li>结合 Room 与 DataStore 实现本地数据与用户会话持久化，支持离线访问与状态恢复，保证客户端与后端数据一致性。</li>
-              <li>实现头像与音频资源缓存机制（LRU 内存缓存 + 本地磁盘缓存），减少重复请求，优化加载性能与用户体验。</li>
+              <li>独立设计并实现个人博客全栈系统，完成公开站点、后台管理、登录鉴权、文章/分类/标签/评论管理等模块开发，形成内容发布、检索、运营一体化平台。</li>
+              <li>基于 Spring Boot 3 + MyBatis 构建后端服务，设计文章、分类、标签、评论等核心数据模型，结合 JWT + Redis 实现后台认证鉴权、会话控制与受保护接口访问。</li>
+              <li>实现基于已发布博客内容的 RAG 知识问答能力，打通文档入库、向量检索、上下文构造与流式回答链路，前端通过 fetch + SSE 解析实现实时输出交互体验。</li>
+              <li>使用 Docker Compose 编排前端、后端、MySQL、Redis、Qdrant 等服务，支持本地一键启动与多组件协同联调，具备完整工程化部署能力。</li>
+              <li>重构前端公共站点与后台控制台 UI，沉淀统一设计 token、响应式布局与管理工作台交互模式，提升系统一致性、可维护性与产品完成度。</li>
             </ul>
           </div>
+
         </section>
 
         <section class="section">
