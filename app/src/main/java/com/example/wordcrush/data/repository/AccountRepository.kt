@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import com.example.wordcrush.data.cache.AvatarCacheStore
+import com.example.wordcrush.data.network.ApiPaths
 import com.example.wordcrush.data.model.AvatarUploadResponse
 import com.example.wordcrush.data.model.LoginRequest
 import com.example.wordcrush.data.model.RegisterRequest
@@ -82,7 +83,7 @@ class AccountRepository @Inject constructor(
             val payload = accountRemoteDataSource.uploadAvatar(username, createAvatarPart(uri))
             val avatarResponse = payload.data ?: AvatarUploadResponse(
                 username = username,
-                avatarUrl = "/api/user/avatar/$username",
+                avatarUrl = "/${ApiPaths.Account.AVATAR}/$username",
                 avatarVersion = System.currentTimeMillis()
             )
             val avatarUrl = resolveAvatarUrl(avatarResponse)

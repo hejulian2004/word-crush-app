@@ -3,6 +3,7 @@ package com.example.wordcrush.data.api
 import com.example.wordcrush.data.model.ApiResponse
 import com.example.wordcrush.data.model.AvatarUploadResponse
 import com.example.wordcrush.data.model.UserResponse
+import com.example.wordcrush.data.network.ApiPaths
 import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.GET
@@ -12,10 +13,10 @@ import retrofit2.http.Part
 import retrofit2.http.Query
 
 interface AuthenticatedAccountApi {
-    @GET("api/user/checkToken")
+    @GET(ApiPaths.Account.CHECK_TOKEN)
     suspend fun checkToken(): Response<ApiResponse<UserResponse>>
 
-    @POST("api/user/changePassword")
+    @POST(ApiPaths.Account.CHANGE_PASSWORD)
     suspend fun changePassword(
         @Query("username") username: String,
         @Query("oldPassword") oldPassword: String,
@@ -23,7 +24,7 @@ interface AuthenticatedAccountApi {
     ): Response<ApiResponse<Unit>>
 
     @Multipart
-    @POST("api/user/avatar")
+    @POST(ApiPaths.Account.AVATAR)
     suspend fun uploadAvatar(
         @Query("username") username: String,
         @Part file: MultipartBody.Part

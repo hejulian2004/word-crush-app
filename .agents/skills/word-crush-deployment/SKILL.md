@@ -136,6 +136,7 @@ Verify `GET https://txy.hejulian.org/word-crush/actuator/health` returns HTTP 20
 
 - Keep the Retrofit base URL trailing slash at `https://txy.hejulian.org/word-crush/`.
 - Use relative paths such as `api/user/login` and `api/getTopNRecord`; a leading slash discards the `/word-crush/` prefix.
+- Centralize all Android client request paths in `app/src/main/java/com/example/wordcrush/data/network/ApiPaths.kt`, grouped by feature. Retrofit annotations, avatar URL builders, and third-party audio requests must reference these constants; do not hardcode request paths elsewhere. Keep constants relative and without a leading slash.
 - Keep production traffic on HTTPS. Do not weaken Android cleartext policy to make a production test pass.
 - Update client documentation when the server URL, API paths, deployment commands, or ports change.
 

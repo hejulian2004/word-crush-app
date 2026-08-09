@@ -2,6 +2,7 @@
 
 import android.content.Context
 import android.media.MediaPlayer
+import com.example.wordcrush.data.network.ApiPaths
 import com.example.wordcrush.data.network.NetworkConfig
 import com.example.wordcrush.data.network.PublicHttpClient
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -91,7 +92,8 @@ class AudioPlayer @Inject constructor(
     }
 
     private fun downloadAudioFile(word: String, type: Int, cacheKey: String): File {
-        val url = "${NetworkConfig.AUDIO_BASE_URL}dictvoice".toHttpUrl().newBuilder()
+        val url = "${NetworkConfig.AUDIO_BASE_URL}${ApiPaths.Audio.PRONUNCIATION}"
+            .toHttpUrl().newBuilder()
             .addQueryParameter("type", type.toString())
             .addQueryParameter("audio", word)
             .build()
