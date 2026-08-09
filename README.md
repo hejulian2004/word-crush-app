@@ -22,12 +22,12 @@ ViewModel ───────────────► UiEffect ──► �
   ▼
 UseCase
   ▼
-Repository
+ Repository
  ├─ LocalDataSource       // Room、DataStore
  └─ RemoteDataSource
      ├─ Public HTTP API
      ├─ Authenticated HTTP API
-     └─ SocketDataSource
+     └─ Learning HTTP API + offline mutation queue
           ↓
    Retrofit / OkHttp
           ↓
@@ -41,15 +41,15 @@ Repository
 经典和计时配对共用 `MatchViewModel` 与纯 `MatchGameReducer`；计时、进度、
 记录保存和活动会话持久化由 UseCase 负责。
 
-Repository 不直接依赖 Retrofit 或 OkHttp。网络层通过 Hilt 区分公共 HTTP、鉴权 HTTP、公共 WebSocket 和鉴权 WebSocket 客户端。
+Repository 不直接依赖 Retrofit 或 OkHttp。网络层通过 Hilt 区分公共 HTTP、鉴权 HTTP 和学习域 HTTP 客户端。学习数据以服务端为准，客户端使用 Room 缓存和离线 mutation queue 支持断网操作，并在首次登录时提交本地学习进度快照。
 
 ## 网络客户端
 
 - 公共 HTTP：登录、注册、排行榜、头像读取和第三方发音。
 - 鉴权 HTTP：checkToken、修改密码、头像上传和游戏记录操作。
-- WebSocket：提供公共/鉴权长连接基础设施，当前尚未接入具体实时业务。
+- 学习 HTTP：词库分页、每日计划、学习状态、每日目标和离线进度同步。
 - 鉴权请求只发送 `Authorization: Bearer <token>`。
-- 鉴权 HTTP/Socket 收到 401 后清理会话；公共请求不会触发退登。
+- 鉴权 HTTP 收到 401 后清理会话；公共请求不会触发退登。
 - Debug 日志只记录脱敏的请求方法、URL、状态码和耗时，不记录密码、token、请求体或响应体。
 
 默认 API 地址：
@@ -81,6 +81,11 @@ https://txy.hejulian.org/word-crush/
 - `POST /api/addGameRecord`（Bearer 鉴权）
 - `POST /api/deleteGameRecord`（Bearer 鉴权）
 - `POST /api/getAllGameRecord`（Bearer 鉴权）
+- `GET /api/learning/catalog`（Bearer 鉴权）
+- `GET /api/learning/state`（Bearer 鉴权）
+- `GET /api/learning/plan`（Bearer 鉴权）
+- `PUT /api/learning/settings/daily-target`（Bearer 鉴权）
+- `POST /api/learning/sync`（Bearer 鉴权）
 
 所有 JSON API 使用统一响应格式：
 

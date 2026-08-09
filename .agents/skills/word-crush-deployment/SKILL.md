@@ -17,6 +17,8 @@ hard stop; fix it locally or report the blocker before touching the server.
 
 ## Project facts
 
+- Development-stage compatibility policy: the project is currently under active development, so database migrations and compatibility between old and new interfaces are not required. New schema and API changes may be applied directly in development environments; do not add compatibility layers unless the user explicitly requests them.
+
 - The client repository is this project; the backend repository is the sibling
   `word-crush-server` project.
 - The backend is Spring Boot 3.x/Java 17 and is deployed with Docker Compose.

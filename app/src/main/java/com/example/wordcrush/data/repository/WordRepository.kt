@@ -5,6 +5,8 @@ import com.example.wordcrush.Database.Word.WordDao
 import com.example.wordcrush.Database.Word.WordEntity
 import com.example.wordcrush.data.local.PreferenceManager
 import com.example.wordcrush.data.model.DailyLearningPlan
+import com.example.wordcrush.data.model.LearningProgressResponse
+import com.example.wordcrush.data.model.LearningWordResponse
 import com.example.wordcrush.data.model.WordItem
 import com.opencsv.CSVReader
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -34,6 +36,55 @@ class WordRepository @Inject constructor(
 
     suspend fun getWords(): List<WordItem> = withContext(Dispatchers.IO) {
         getCachedWords()
+    }
+
+    suspend fun upsertRemoteCatalog(words: List<LearningWordResponse>) = withContext(Dispatchers.IO) {
+        if (words.isEmpty()) return@withContext
+        val existing = wordDao.getAllWords().associateBy { it.id }
+        val inserts = words.filterNot { existing.containsKey(it.id) }.map { remote ->
+            WordEntity().apply {
+                id = remote.id
+                english = remote.english
+                pronunciation = remote.pronunciation
+                chinese = remote.chinese
+                setMaster(false)
+                masterCount = 0
+            }
+        }
+        if (inserts.isNotEmpty()) {
+            wordDao.insertAll(inserts)
+        }
+        val updates = words.mapNotNull { remote ->
+            existing[remote.id]?.apply {
+                english = remote.english
+                pronunciation = remote.pronunciation
+                chinese = remote.chinese
+            }
+        }
+        if (updates.isNotEmpty()) {
+            wordDao.updateAll(updates)
+        }
+        cacheMutex.withLock {
+            cachedWords = wordDao.getAllWords().map { it.toWordItem() }
+        }
+    }
+
+    suspend fun applyRemoteProgress(progress: List<LearningProgressResponse>) = withContext(Dispatchers.IO) {
+        if (progress.isEmpty()) return@withContext
+        val changed = progress.mapNotNull { remote ->
+            wordDao.getWordById(remote.wordId)?.apply {
+                masterCount = remote.masterCount.coerceIn(0, REQUIRED_CORRECT_MATCHES)
+                setMaster(remote.mastered || masterCount >= REQUIRED_CORRECT_MATCHES)
+            }
+        }
+        if (changed.isNotEmpty()) {
+            wordDao.updateAll(changed)
+            cacheMutex.withLock {
+                val changedMap = changed.associate { it.id to it.toWordItem() }
+                cachedWords = (cachedWords ?: wordDao.getAllWords().map { it.toWordItem() })
+                    .map { changedMap[it.id] ?: it }
+            }
+        }
     }
 
     suspend fun searchWords(query: String): List<WordItem> = withContext(Dispatchers.IO) {

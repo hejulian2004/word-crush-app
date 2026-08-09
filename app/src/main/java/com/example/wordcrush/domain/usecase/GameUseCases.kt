@@ -4,7 +4,7 @@ import android.os.SystemClock
 import com.example.wordcrush.data.model.ActiveGameSession
 import com.example.wordcrush.data.model.WordItem
 import com.example.wordcrush.data.repository.ActiveGameSessionManager
-import com.example.wordcrush.data.repository.WordRepository
+import com.example.wordcrush.data.repository.LearningRepository
 import javax.inject.Inject
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -41,22 +41,22 @@ class PersistActiveSessionsUseCase @Inject constructor(
 }
 
 class GetWordsByIdsUseCase @Inject constructor(
-    private val wordRepository: WordRepository
+    private val learningRepository: LearningRepository
 ) {
-    suspend operator fun invoke(ids: List<Int>): List<WordItem> = wordRepository.getWordsByIds(ids)
+    suspend operator fun invoke(ids: List<Int>): List<WordItem> = learningRepository.getWordsByIds(ids)
 }
 
 class RecordCorrectMatchUseCase @Inject constructor(
-    private val wordRepository: WordRepository
+    private val learningRepository: LearningRepository
 ) {
-    suspend operator fun invoke(wordId: Int): WordItem? = wordRepository.recordCorrectMatch(wordId)
+    suspend operator fun invoke(wordId: Int): WordItem? = learningRepository.recordCorrectMatch(wordId)
 }
 
 class RecordIncorrectMatchUseCase @Inject constructor(
-    private val wordRepository: WordRepository
+    private val learningRepository: LearningRepository
 ) {
     suspend operator fun invoke(wordIds: Set<Int>) {
-        wordRepository.recordIncorrectMatch(wordIds)
+        learningRepository.recordIncorrectMatch(wordIds)
     }
 }
 

@@ -334,6 +334,15 @@ internal fun HomeRoute(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Text(
+                    text = if (uiState.pendingLearningMutations == 0) {
+                        "Learning progress is synced."
+                    } else {
+                        "${uiState.pendingLearningMutations} learning updates are waiting for network sync."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(dims.controlSpacing),

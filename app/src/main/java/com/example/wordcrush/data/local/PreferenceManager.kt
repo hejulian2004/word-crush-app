@@ -3,6 +3,7 @@ package com.example.wordcrush.data.local
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -31,6 +32,7 @@ class PreferenceManager @Inject constructor(
         private val DAILY_PLAN_DATE_KEY = stringPreferencesKey("daily_plan_date")
         private val DAILY_PLAN_WORD_IDS_KEY = stringPreferencesKey("daily_plan_word_ids")
         private val ACTIVE_GAME_SESSIONS_KEY = stringPreferencesKey("active_game_sessions")
+        private val LEARNING_MIGRATION_COMPLETED_KEY = booleanPreferencesKey("learning_migration_completed")
     }
 
     data class PersistedSession(
@@ -164,6 +166,18 @@ class PreferenceManager @Inject constructor(
         }
         context.dataStore.edit { preferences ->
             preferences.remove(ACTIVE_GAME_SESSIONS_KEY)
+        }
+    }
+
+    suspend fun isLearningMigrationCompleted(): Boolean {
+        return context.dataStore.data.map { preferences ->
+            preferences[LEARNING_MIGRATION_COMPLETED_KEY] ?: false
+        }.firstOrNull() ?: false
+    }
+
+    suspend fun markLearningMigrationCompleted() {
+        context.dataStore.edit { preferences ->
+            preferences[LEARNING_MIGRATION_COMPLETED_KEY] = true
         }
     }
 

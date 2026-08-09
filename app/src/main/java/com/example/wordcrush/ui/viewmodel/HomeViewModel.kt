@@ -6,10 +6,12 @@ import androidx.lifecycle.viewModelScope
 import com.example.wordcrush.data.network.NetworkConfig
 import com.example.wordcrush.domain.usecase.ChangePasswordUseCase
 import com.example.wordcrush.domain.usecase.GetDailyLearningPlanUseCase
+import com.example.wordcrush.domain.usecase.GetPendingLearningMutationsUseCase
 import com.example.wordcrush.domain.usecase.GetScoreSummaryUseCase
 import com.example.wordcrush.domain.usecase.LogoutUseCase
 import com.example.wordcrush.domain.usecase.ObserveSessionUseCase
 import com.example.wordcrush.domain.usecase.SaveDailyTargetUseCase
+import com.example.wordcrush.domain.usecase.SyncLearningMutationsUseCase
 import com.example.wordcrush.domain.usecase.SyncGameRecordsUseCase
 import com.example.wordcrush.domain.usecase.UploadAvatarUseCase
 import com.example.wordcrush.ui.architecture.UdfStore
@@ -45,10 +47,12 @@ sealed interface HomeEffect {
 class HomeViewModel @Inject constructor(
     private val changePasswordUseCase: ChangePasswordUseCase,
     private val getDailyLearningPlanUseCase: GetDailyLearningPlanUseCase,
+    private val getPendingLearningMutationsUseCase: GetPendingLearningMutationsUseCase,
     private val getScoreSummaryUseCase: GetScoreSummaryUseCase,
     private val logoutUseCase: LogoutUseCase,
     private val observeSessionUseCase: ObserveSessionUseCase,
     private val saveDailyTargetUseCase: SaveDailyTargetUseCase,
+    private val syncLearningMutationsUseCase: SyncLearningMutationsUseCase,
     private val syncGameRecordsUseCase: SyncGameRecordsUseCase,
     private val uploadAvatarUseCase: UploadAvatarUseCase
 ) : ViewModel() {
@@ -108,6 +112,7 @@ class HomeViewModel @Inject constructor(
         launchAction {
             val plan = getDailyLearningPlanUseCase()
             val summary = getScoreSummaryUseCase()
+            val pendingMutations = getPendingLearningMutationsUseCase()
             updateState {
                 it.copy(
                     dailyTarget = plan.dailyTarget,
@@ -119,6 +124,7 @@ class HomeViewModel @Inject constructor(
                     canIncreaseDailyTarget = plan.canIncreaseDailyTarget,
                     breakthroughScore = summary.breakthroughScore,
                     timeLimitScore = summary.timeLimitScore,
+                    pendingLearningMutations = pendingMutations,
                     error = null
                 )
             }
@@ -171,11 +177,16 @@ class HomeViewModel @Inject constructor(
     private fun syncCloudData() {
         launchAction {
             updateState { it.copy(isLoading = true) }
-            syncGameRecordsUseCase()
+            val learningResult = syncLearningMutationsUseCase()
+            val recordsResult = syncGameRecordsUseCase()
+            recordsResult
                 .onSuccess { result ->
                     refreshDataAfterAction()
                     val message = buildString {
                         append("Cloud data synced.")
+                        if (learningResult.isFailure) {
+                            append(" Learning progress is still pending.")
+                        }
                         if (result.uploadedCount > 0) {
                             append(" Uploaded ")
                             append(result.uploadedCount)
@@ -189,6 +200,11 @@ class HomeViewModel @Inject constructor(
                 .onFailure { error ->
                     emitEffect(HomeEffect.ShowMessage(error.message ?: "Cloud sync failed."))
                 }
+            learningResult.onFailure { error ->
+                emitEffect(HomeEffect.ShowMessage(error.message ?: "Learning progress sync failed."))
+            }
+            val pendingMutations = getPendingLearningMutationsUseCase()
+            updateState { it.copy(pendingLearningMutations = pendingMutations) }
             updateState { it.copy(isLoading = false) }
         }
     }
@@ -196,33 +212,36 @@ class HomeViewModel @Inject constructor(
     private fun saveDailyTarget() {
         val input = currentState.dailyTargetInput
         launchAction {
-            saveDailyTargetUseCase(input)
-                .onSuccess {
-                    val plan = getDailyLearningPlanUseCase()
-                    updateState {
-                        it.copy(
-                            dailyTarget = plan.dailyTarget,
-                            dailyTargetInput = plan.dailyTarget.toString(),
-                            todayWordCount = plan.todayTotalCount,
-                            completedTodayCount = plan.completedCount,
-                            allWordsMastered = plan.allWordsMastered,
-                            dailyCompleted = plan.isDailyCompleted,
-                            canIncreaseDailyTarget = plan.canIncreaseDailyTarget
-                        )
-                    }
-                    emitEffect(HomeEffect.ShowMessage("Daily learning count updated."))
+            val result = saveDailyTargetUseCase(input)
+            if (result.isSuccess) {
+                val plan = getDailyLearningPlanUseCase()
+                val pendingMutations = getPendingLearningMutationsUseCase()
+                updateState {
+                    it.copy(
+                        dailyTarget = plan.dailyTarget,
+                        dailyTargetInput = plan.dailyTarget.toString(),
+                        todayWordCount = plan.todayTotalCount,
+                        completedTodayCount = plan.completedCount,
+                        allWordsMastered = plan.allWordsMastered,
+                        dailyCompleted = plan.isDailyCompleted,
+                        canIncreaseDailyTarget = plan.canIncreaseDailyTarget,
+                        pendingLearningMutations = pendingMutations
+                    )
                 }
-                .onFailure { error ->
-                    emitEffect(HomeEffect.ShowMessage(
-                        error.message ?: "Please enter a daily learning count greater than 0."
-                    ))
-                }
+                emitEffect(HomeEffect.ShowMessage("Daily learning count updated."))
+            } else {
+                emitEffect(HomeEffect.ShowMessage(
+                    result.exceptionOrNull()?.message
+                        ?: "Please enter a daily learning count greater than 0."
+                ))
+            }
         }
     }
 
     private suspend fun refreshDataAfterAction() {
         val plan = getDailyLearningPlanUseCase()
         val summary = getScoreSummaryUseCase()
+        val pendingMutations = getPendingLearningMutationsUseCase()
         updateState {
             it.copy(
                 dailyTarget = plan.dailyTarget,
@@ -233,7 +252,8 @@ class HomeViewModel @Inject constructor(
                 dailyCompleted = plan.isDailyCompleted,
                 canIncreaseDailyTarget = plan.canIncreaseDailyTarget,
                 breakthroughScore = summary.breakthroughScore,
-                timeLimitScore = summary.timeLimitScore
+                timeLimitScore = summary.timeLimitScore,
+                pendingLearningMutations = pendingMutations
             )
         }
     }
@@ -259,6 +279,7 @@ data class HomeUiState(
     val allWordsMastered: Boolean = false,
     val dailyCompleted: Boolean = false,
     val canIncreaseDailyTarget: Boolean = false,
+    val pendingLearningMutations: Int = 0,
     val oldPassword: String = "",
     val newPassword: String = "",
     val confirmPassword: String = "",

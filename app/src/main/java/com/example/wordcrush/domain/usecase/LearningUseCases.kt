@@ -1,32 +1,40 @@
 package com.example.wordcrush.domain.usecase
 
-import com.example.wordcrush.data.local.PreferenceManager
 import com.example.wordcrush.data.model.DailyLearningPlan
 import com.example.wordcrush.data.model.ScoreSummary
 import com.example.wordcrush.data.model.WordItem
 import com.example.wordcrush.data.repository.GameRecordRepository
-import com.example.wordcrush.data.repository.WordRepository
+import com.example.wordcrush.data.repository.LearningRepository
 import javax.inject.Inject
 
 class GetDailyLearningPlanUseCase @Inject constructor(
-    private val wordRepository: WordRepository
+    private val learningRepository: LearningRepository
 ) {
-    suspend operator fun invoke(): DailyLearningPlan = wordRepository.getDailyLearningPlan()
+    suspend operator fun invoke(): DailyLearningPlan = learningRepository.getDailyLearningPlan()
 }
 
 class SaveDailyTargetUseCase @Inject constructor(
-    private val preferenceManager: PreferenceManager
+    private val learningRepository: LearningRepository
 ) {
-    suspend operator fun invoke(input: String): Result<Int> {
-        val target = input.toIntOrNull()
-        if (target == null || target <= 0) {
-            return Result.failure(
-                IllegalArgumentException("Please enter a daily learning count greater than 0.")
-            )
-        }
-        preferenceManager.saveDailyWordTarget(target)
-        return Result.success(target)
-    }
+    suspend operator fun invoke(input: String): Result<Int> = learningRepository.saveDailyTarget(input)
+}
+
+class BootstrapLearningDataUseCase @Inject constructor(
+    private val learningRepository: LearningRepository
+) {
+    suspend operator fun invoke(): Result<Unit> = learningRepository.bootstrap()
+}
+
+class SyncLearningMutationsUseCase @Inject constructor(
+    private val learningRepository: LearningRepository
+) {
+    suspend operator fun invoke(): Result<Unit> = learningRepository.syncPending()
+}
+
+class GetPendingLearningMutationsUseCase @Inject constructor(
+    private val learningRepository: LearningRepository
+) {
+    suspend operator fun invoke(): Int = learningRepository.pendingMutationCount()
 }
 
 class GetScoreSummaryUseCase @Inject constructor(
@@ -42,13 +50,13 @@ class SyncGameRecordsUseCase @Inject constructor(
 }
 
 class SearchWordsUseCase @Inject constructor(
-    private val wordRepository: WordRepository
+    private val learningRepository: LearningRepository
 ) {
     suspend operator fun invoke(query: String, filter: WordFilter): List<WordItem> {
         val baseWords = when (filter) {
-            WordFilter.ALL -> wordRepository.getWords()
-            WordFilter.MASTERED -> wordRepository.getWordsByMastered(true)
-            WordFilter.UNMASTERED -> wordRepository.getWordsByMastered(false)
+            WordFilter.ALL -> learningRepository.getWords()
+            WordFilter.MASTERED -> learningRepository.getWordsByMastered(true)
+            WordFilter.UNMASTERED -> learningRepository.getWordsByMastered(false)
         }
         val normalizedQuery = query.trim()
         if (normalizedQuery.isBlank()) return baseWords
@@ -61,10 +69,10 @@ class SearchWordsUseCase @Inject constructor(
 }
 
 class UpdateWordMasteryUseCase @Inject constructor(
-    private val wordRepository: WordRepository
+    private val learningRepository: LearningRepository
 ) {
     suspend operator fun invoke(wordId: Int, isMastered: Boolean): WordItem? =
-        wordRepository.updateWordMastered(wordId, isMastered)
+        learningRepository.updateWordMastered(wordId, isMastered)
 }
 
 enum class WordFilter {

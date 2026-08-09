@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.wordcrush.domain.usecase.LogoutUseCase
 import com.example.wordcrush.domain.usecase.ObserveSessionUseCase
+import com.example.wordcrush.domain.usecase.BootstrapLearningDataUseCase
 import com.example.wordcrush.domain.usecase.ValidateSessionUseCase
 import com.example.wordcrush.ui.architecture.UdfStore
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,6 +23,7 @@ sealed interface MainEffect {
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
+    private val bootstrapLearningDataUseCase: BootstrapLearningDataUseCase,
     private val validateSessionUseCase: ValidateSessionUseCase,
     private val logoutUseCase: LogoutUseCase,
     private val observeSessionUseCase: ObserveSessionUseCase
@@ -71,6 +73,14 @@ class MainViewModel @Inject constructor(
             setState(currentState.copy(isLoading = true, hasCheckedSession = false, error = null))
             validateSessionUseCase()
                 .onSuccess { isLoggedIn ->
+                    if (isLoggedIn) {
+                        bootstrapLearningDataUseCase()
+                            .onFailure { error ->
+                                emitEffect(MainEffect.ShowMessage(
+                                    error.message ?: "Learning data will use the local cache until sync succeeds."
+                                ))
+                            }
+                    }
                     setState(
                         MainUiState(
                             isLoading = false,

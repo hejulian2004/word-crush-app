@@ -6,9 +6,9 @@
 
 - Base URL：`https://txy.hejulian.org/word-crush/`
 - HTTP 客户端：Retrofit + OkHttp + Gson
-- WebSocket Base URL：`wss://txy.hejulian.org/word-crush/`
 - 鉴权方式：`Authorization: Bearer <token>`
 - 不再支持 `token` 请求头或 query token
+- 当前处于开发阶段，服务端 schema 与接口可以直接演进，不额外维护旧接口兼容层。
 
 ## 统一响应
 
@@ -194,7 +194,85 @@ UseCase 再调用 Repository；网络层仍只负责 Retrofit/OkHttp 和统一�
 - `PublicAccountApi` / `PublicGameApi`：公共 Retrofit API。
 - `AuthenticatedAccountApi` / `AuthenticatedGameApi`：鉴权 Retrofit API。
 - `AccountRemoteDataSource` / `GameRecordRemoteDataSource`：封装 API 和统一错误处理。
+- `LearningRemoteDataSource` / `LearningRepository`：服务端词库和学习状态的唯一业务入口，Room 只作为缓存与离线 mutation queue。
 - `SessionManager`：唯一会话状态和 token 来源。
-- `SocketClient`：OkHttp WebSocket 长连接基础设施。
 
-当前后端尚未提供具体 WebSocket 业务端点，客户端只保留通用传输能力。
+## 学习接口
+
+学习接口均需携带 `Authorization: Bearer <token>`。服务端保存词库、掌握次数、每日目标和每日计划；客户端可以离线写入 mutation queue，联网后批量提交。
+
+### 获取词库
+
+```text
+GET api/learning/catalog?query=abandon&mastered=false&page=0&size=100
+```
+
+返回 `items`、分页信息和 `catalogVersion`：
+
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "english": "abandon",
+        "pronunciation": "/əˈbændən/",
+        "chinese": "v. 遗弃；放弃",
+        "masterCount": 0,
+        "mastered": false,
+        "contentVersion": 1
+      }
+    ],
+    "page": 0,
+    "size": 100,
+    "total": 1,
+    "catalogVersion": 1
+  }
+}
+```
+
+### 获取学习状态
+
+```text
+GET api/learning/state
+GET api/learning/plan
+```
+
+返回 `dailyTarget`、当天计划单词、完成数、未掌握数量、`syncVersion` 和用户进度。
+
+### 更新每日目标
+
+```text
+PUT api/learning/settings/daily-target
+```
+
+```json
+{
+  "dailyTarget": 30
+}
+```
+
+### 同步离线学习变更
+
+```text
+POST api/learning/sync
+```
+
+```json
+{
+  "mutations": [
+    {
+      "mutationId": "client-generated-uuid",
+      "wordId": 1,
+      "operation": "CORRECT_MATCH",
+      "masterCount": null,
+      "dailyTarget": null,
+      "clientAt": "2026-08-09T08:00:00Z"
+    }
+  ]
+}
+```
+
+服务端按 `mutationId` 幂等处理，返回已接受的 mutation ID 和最新学习状态。首次登录时客户端会把本地进度作为 `IMPORT_SNAPSHOT` 提交，服务端取更高掌握次数。

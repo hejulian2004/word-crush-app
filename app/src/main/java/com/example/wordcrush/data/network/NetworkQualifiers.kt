@@ -17,19 +17,3 @@ annotation class PublicRetrofit
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class AuthenticatedRetrofit
-
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class PublicWebSocketClient
-
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class AuthenticatedWebSocketClient
-
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class PublicWebSocket
-
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class AuthenticatedWebSocket

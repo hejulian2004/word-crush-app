@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.example.wordcrush.Database.AppDatabase
 import com.example.wordcrush.Database.GameRecord.GameRecordDao
 import com.example.wordcrush.Database.Word.WordDao
+import com.example.wordcrush.Database.LearningMutationDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -38,5 +39,11 @@ object DatabaseModule {
     @Singleton
     fun provideGameRecordDao(database: AppDatabase): GameRecordDao {
         return database.gameRecordDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideLearningMutationDao(database: AppDatabase): LearningMutationDao {
+        return database.learningMutationDao()
     }
 }

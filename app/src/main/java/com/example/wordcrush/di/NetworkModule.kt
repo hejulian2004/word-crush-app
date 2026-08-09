@@ -2,21 +2,15 @@ package com.example.wordcrush.di
 
 import com.example.wordcrush.data.api.AuthenticatedAccountApi
 import com.example.wordcrush.data.api.AuthenticatedGameApi
+import com.example.wordcrush.data.api.LearningApi
 import com.example.wordcrush.data.api.PublicAccountApi
 import com.example.wordcrush.data.api.PublicGameApi
 import com.example.wordcrush.data.network.AuthenticatedHttpClient
 import com.example.wordcrush.data.network.AuthenticatedRetrofit
-import com.example.wordcrush.data.network.AuthenticatedWebSocket
-import com.example.wordcrush.data.network.AuthenticatedWebSocketClient
 import com.example.wordcrush.data.network.AuthInterceptor
 import com.example.wordcrush.data.network.NetworkConfig
 import com.example.wordcrush.data.network.PublicHttpClient
 import com.example.wordcrush.data.network.PublicRetrofit
-import com.example.wordcrush.data.network.PublicWebSocket
-import com.example.wordcrush.data.network.PublicWebSocketClient
-import com.example.wordcrush.data.network.socket.OkHttpSocketClient
-import com.example.wordcrush.data.network.socket.SocketClient
-import com.example.wordcrush.data.session.SessionManager
 import com.google.gson.Gson
 import dagger.Module
 import dagger.Provides
@@ -53,20 +47,6 @@ object NetworkModule {
         return httpClientBuilder()
             .addInterceptor(authInterceptor)
             .build()
-    }
-
-    @Provides
-    @Singleton
-    @PublicWebSocketClient
-    fun providePublicWebSocketHttpClient(): OkHttpClient {
-        return webSocketClientBuilder().build()
-    }
-
-    @Provides
-    @Singleton
-    @AuthenticatedWebSocketClient
-    fun provideAuthenticatedWebSocketHttpClient(): OkHttpClient {
-        return webSocketClientBuilder().build()
     }
 
     @Provides
@@ -111,19 +91,8 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    @PublicWebSocket
-    fun providePublicSocketClient(
-        @PublicWebSocketClient client: OkHttpClient,
-        sessionManager: SessionManager
-    ): SocketClient = OkHttpSocketClient(client, sessionManager, authenticated = false)
-
-    @Provides
-    @Singleton
-    @AuthenticatedWebSocket
-    fun provideAuthenticatedSocketClient(
-        @AuthenticatedWebSocketClient client: OkHttpClient,
-        sessionManager: SessionManager
-    ): SocketClient = OkHttpSocketClient(client, sessionManager, authenticated = true)
+    fun provideLearningApi(@AuthenticatedRetrofit retrofit: Retrofit): LearningApi =
+        retrofit.create(LearningApi::class.java)
 
     private fun httpClientBuilder(): OkHttpClient.Builder {
         val logging = HttpLoggingInterceptor().apply {
@@ -142,15 +111,6 @@ object NetworkModule {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
-            .retryOnConnectionFailure(true)
-    }
-
-    private fun webSocketClientBuilder(): OkHttpClient.Builder {
-        return OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(0, TimeUnit.MILLISECONDS)
-            .writeTimeout(15, TimeUnit.SECONDS)
-            .pingInterval(20, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
     }
 
