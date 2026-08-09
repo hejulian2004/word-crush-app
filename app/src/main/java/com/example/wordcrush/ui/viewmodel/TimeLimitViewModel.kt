@@ -12,11 +12,12 @@ import com.example.wordcrush.data.model.WordItem
 import com.example.wordcrush.data.repository.ActiveGameSessionManager
 import com.example.wordcrush.data.repository.GameRecordRepository
 import com.example.wordcrush.data.repository.WordRepository
+import com.example.wordcrush.data.network.NetworkConfig
+import com.example.wordcrush.data.session.SessionManager
 import com.example.wordcrush.ui.model.MatchCardUiModel
 import com.example.wordcrush.ui.model.MatchCardFeedback
 import com.example.wordcrush.ui.model.MatchGameEvent
 import com.example.wordcrush.ui.model.buildMatchRound
-import com.example.wordcrush.utils.AppStateManager
 import com.example.wordcrush.utils.AvatarUrlFactory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -28,7 +29,6 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 @HiltViewModel
@@ -36,8 +36,7 @@ class TimeLimitViewModel @Inject constructor(
     private val wordRepository: WordRepository,
     private val gameRecordRepository: GameRecordRepository,
     private val activeGameSessionManager: ActiveGameSessionManager,
-    private val preferenceManager: PreferenceManager,
-    private val appStateManager: AppStateManager
+    private val sessionManager: SessionManager
 ) : ViewModel() {
     private companion object {
         const val GAME_TYPE = 1
@@ -59,8 +58,8 @@ class TimeLimitViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val username = preferenceManager.usernameFlow.firstOrNull().orEmpty()
-            val avatarUrl = if (username.isBlank()) "" else AvatarUrlFactory(appStateManager.domain).create(username)
+            val username = sessionManager.currentUsername.orEmpty()
+            val avatarUrl = if (username.isBlank()) "" else AvatarUrlFactory(NetworkConfig.API_BASE_URL).create(username)
             restoreOrInitialize(avatarUrl)
         }
     }

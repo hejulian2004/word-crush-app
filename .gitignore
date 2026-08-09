@@ -34,3 +34,6 @@ local.properties
 Thumbs.db
 
 .gradle-user-home/
+
+# Local SSH credentials used for server access
+.codex-ssh/

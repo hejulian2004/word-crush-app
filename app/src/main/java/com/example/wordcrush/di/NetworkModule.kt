@@ -1,16 +1,27 @@
 package com.example.wordcrush.di
 
-import com.example.wordcrush.data.api.AccountApi
-import com.example.wordcrush.data.api.GameRecordApi
-import com.example.wordcrush.data.cache.AvatarCacheStore
-import com.example.wordcrush.data.local.PreferenceManager
-import com.example.wordcrush.utils.AppStateManager
+import com.example.wordcrush.data.api.AuthenticatedAccountApi
+import com.example.wordcrush.data.api.AuthenticatedGameApi
+import com.example.wordcrush.data.api.PublicAccountApi
+import com.example.wordcrush.data.api.PublicGameApi
+import com.example.wordcrush.data.network.AuthenticatedHttpClient
+import com.example.wordcrush.data.network.AuthenticatedRetrofit
+import com.example.wordcrush.data.network.AuthenticatedWebSocket
+import com.example.wordcrush.data.network.AuthenticatedWebSocketClient
+import com.example.wordcrush.data.network.AuthInterceptor
+import com.example.wordcrush.data.network.NetworkConfig
+import com.example.wordcrush.data.network.PublicHttpClient
+import com.example.wordcrush.data.network.PublicRetrofit
+import com.example.wordcrush.data.network.PublicWebSocket
+import com.example.wordcrush.data.network.PublicWebSocketClient
+import com.example.wordcrush.data.network.socket.OkHttpSocketClient
+import com.example.wordcrush.data.network.socket.SocketClient
+import com.example.wordcrush.data.session.SessionManager
+import com.google.gson.Gson
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -21,68 +32,133 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
+    @Provides
+    @Singleton
+    fun provideGson(): Gson = Gson()
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(
-        appStateManager: AppStateManager,
-        preferenceManager: PreferenceManager,
-        avatarCacheStore: AvatarCacheStore
+    @PublicHttpClient
+    fun providePublicHttpClient(): OkHttpClient {
+        return httpClientBuilder()
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    @AuthenticatedHttpClient
+    fun provideAuthenticatedHttpClient(
+        authInterceptor: AuthInterceptor
     ): OkHttpClient {
+        return httpClientBuilder()
+            .addInterceptor(authInterceptor)
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    @PublicWebSocketClient
+    fun providePublicWebSocketHttpClient(): OkHttpClient {
+        return webSocketClientBuilder().build()
+    }
+
+    @Provides
+    @Singleton
+    @AuthenticatedWebSocketClient
+    fun provideAuthenticatedWebSocketHttpClient(): OkHttpClient {
+        return webSocketClientBuilder().build()
+    }
+
+    @Provides
+    @Singleton
+    @PublicRetrofit
+    fun providePublicRetrofit(
+        @PublicHttpClient client: OkHttpClient,
+        gson: Gson
+    ): Retrofit {
+        return retrofitBuilder(client, gson)
+    }
+
+    @Provides
+    @Singleton
+    @AuthenticatedRetrofit
+    fun provideAuthenticatedRetrofit(
+        @AuthenticatedHttpClient client: OkHttpClient,
+        gson: Gson
+    ): Retrofit {
+        return retrofitBuilder(client, gson)
+    }
+
+    @Provides
+    @Singleton
+    fun providePublicAccountApi(@PublicRetrofit retrofit: Retrofit): PublicAccountApi =
+        retrofit.create(PublicAccountApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideAuthenticatedAccountApi(@AuthenticatedRetrofit retrofit: Retrofit): AuthenticatedAccountApi =
+        retrofit.create(AuthenticatedAccountApi::class.java)
+
+    @Provides
+    @Singleton
+    fun providePublicGameApi(@PublicRetrofit retrofit: Retrofit): PublicGameApi =
+        retrofit.create(PublicGameApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideAuthenticatedGameApi(@AuthenticatedRetrofit retrofit: Retrofit): AuthenticatedGameApi =
+        retrofit.create(AuthenticatedGameApi::class.java)
+
+    @Provides
+    @Singleton
+    @PublicWebSocket
+    fun providePublicSocketClient(
+        @PublicWebSocketClient client: OkHttpClient,
+        sessionManager: SessionManager
+    ): SocketClient = OkHttpSocketClient(client, sessionManager, authenticated = false)
+
+    @Provides
+    @Singleton
+    @AuthenticatedWebSocket
+    fun provideAuthenticatedSocketClient(
+        @AuthenticatedWebSocketClient client: OkHttpClient,
+        sessionManager: SessionManager
+    ): SocketClient = OkHttpSocketClient(client, sessionManager, authenticated = true)
+
+    private fun httpClientBuilder(): OkHttpClient.Builder {
         val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            level = if (com.example.wordcrush.BuildConfig.DEBUG) {
+                HttpLoggingInterceptor.Level.BASIC
+            } else {
+                HttpLoggingInterceptor.Level.NONE
+            }
+            redactHeader("Authorization")
+            redactHeader("token")
+            redactHeader("Cookie")
         }
 
         return OkHttpClient.Builder()
-            .addInterceptor { chain ->
-                val token = appStateManager.token.value.ifBlank {
-                    runBlocking { preferenceManager.tokenFlow.firstOrNull().orEmpty() }
-                }
-
-                val requestBuilder = chain.request().newBuilder()
-                if (token.isNotBlank()) {
-                    requestBuilder.header("Authorization", "Bearer $token")
-                    requestBuilder.header("token", token)
-                }
-                val response = chain.proceed(requestBuilder.build())
-                if (token.isNotBlank() && response.code == 401) {
-                    runBlocking {
-                        preferenceManager.clear()
-                    }
-                    avatarCacheStore.clear()
-                    appStateManager.notifySessionExpired()
-                }
-                response
-            }
             .addInterceptor(logging)
-            .connectTimeout(30, TimeUnit.SECONDS)
+            .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
-            .build()
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
     }
 
-    @Provides
-    @Singleton
-    fun provideRetrofit(
-        okHttpClient: OkHttpClient,
-        appStateManager: AppStateManager
-    ): Retrofit {
-        val baseUrl = appStateManager.domain.let { if (it.endsWith('/')) it else "$it/" }
+    private fun webSocketClientBuilder(): OkHttpClient.Builder {
+        return OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(0, TimeUnit.MILLISECONDS)
+            .writeTimeout(15, TimeUnit.SECONDS)
+            .pingInterval(20, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+    }
+
+    private fun retrofitBuilder(client: OkHttpClient, gson: Gson): Retrofit {
         return Retrofit.Builder()
-            .baseUrl(baseUrl)
-            .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create())
+            .baseUrl(NetworkConfig.API_BASE_URL)
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
-    }
-
-    @Provides
-    @Singleton
-    fun provideAccountApi(retrofit: Retrofit): AccountApi {
-        return retrofit.create(AccountApi::class.java)
-    }
-
-    @Provides
-    @Singleton
-    fun provideGameRecordApi(retrofit: Retrofit): GameRecordApi {
-        return retrofit.create(GameRecordApi::class.java)
     }
 }

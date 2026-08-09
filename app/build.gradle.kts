@@ -35,6 +35,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     compileOptions {
@@ -44,7 +45,6 @@ android {
 }
 
 kotlin {
-    jvmToolchain(17)
     compilerOptions {
         jvmTarget = JvmTarget.JVM_17
     }
@@ -126,6 +126,7 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.logging.interceptor)
     implementation(libs.glide)
+    implementation(libs.glide.okhttp)
 
     // DataStore
     implementation(libs.datastore.preferences)
@@ -136,6 +137,7 @@ dependencies {
 
     // Testing
     testImplementation(libs.junit)
+    testImplementation(libs.mockwebserver)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
 }

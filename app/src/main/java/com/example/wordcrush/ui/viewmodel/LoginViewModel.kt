@@ -2,20 +2,20 @@ package com.example.wordcrush.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.wordcrush.data.local.PreferenceManager
 import com.example.wordcrush.data.repository.AccountRepository
+import com.example.wordcrush.data.session.SessionManager
 import com.example.wordcrush.utils.LogUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val accountRepository: AccountRepository,
-    private val preferenceManager: PreferenceManager
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
@@ -50,7 +50,8 @@ class LoginViewModel @Inject constructor(
 
     fun checkLocalLoginState() {
         viewModelScope.launch {
-            if (preferenceManager.isLoggedIn()) {
+            sessionManager.restore()
+            if (sessionManager.isLoggedIn.value) {
                 _loginResult.value = LoginResult.AlreadyLoggedIn
             }
         }

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Word Crush Deployment"
+  short_description: "Local-first Spring Boot and Docker deployment for Word Crush"
+  default_prompt: "Use the Word Crush deployment workflow: make local client/backend Docker integration pass before any SSH deployment, then deploy and verify the remote HTTPS service."

@@ -2,6 +2,8 @@
 
 import android.content.Context
 import android.media.MediaPlayer
+import com.example.wordcrush.data.network.NetworkConfig
+import com.example.wordcrush.data.network.PublicHttpClient
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.FileOutputStream
@@ -21,6 +23,7 @@ import okhttp3.Request
 @Singleton
 class AudioPlayer @Inject constructor(
     @ApplicationContext private val context: Context,
+    @PublicHttpClient
     private val client: OkHttpClient
 ) {
     private companion object {
@@ -88,7 +91,7 @@ class AudioPlayer @Inject constructor(
     }
 
     private fun downloadAudioFile(word: String, type: Int, cacheKey: String): File {
-        val url = "https://dict.youdao.com/dictvoice".toHttpUrl().newBuilder()
+        val url = "${NetworkConfig.AUDIO_BASE_URL}dictvoice".toHttpUrl().newBuilder()
             .addQueryParameter("type", type.toString())
             .addQueryParameter("audio", word)
             .build()

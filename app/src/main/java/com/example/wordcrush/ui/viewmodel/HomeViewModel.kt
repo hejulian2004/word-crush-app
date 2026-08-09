@@ -7,7 +7,8 @@ import com.example.wordcrush.data.local.PreferenceManager
 import com.example.wordcrush.data.repository.AccountRepository
 import com.example.wordcrush.data.repository.GameRecordRepository
 import com.example.wordcrush.data.repository.WordRepository
-import com.example.wordcrush.utils.AppStateManager
+import com.example.wordcrush.data.network.NetworkConfig
+import com.example.wordcrush.data.session.SessionManager
 import com.example.wordcrush.utils.AvatarUrlFactory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -18,7 +19,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 @HiltViewModel
@@ -27,7 +27,7 @@ class HomeViewModel @Inject constructor(
     private val gameRecordRepository: GameRecordRepository,
     private val wordRepository: WordRepository,
     private val preferenceManager: PreferenceManager,
-    private val appStateManager: AppStateManager
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -41,21 +41,21 @@ class HomeViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            appStateManager.username.collectLatest { username ->
+            sessionManager.username.collectLatest { username ->
                 _uiState.value = _uiState.value.copy(username = username)
             }
         }
         viewModelScope.launch {
-            appStateManager.avatarUrl.collectLatest { avatarUrl ->
+            sessionManager.avatarUrl.collectLatest { avatarUrl ->
                 _uiState.value = _uiState.value.copy(avatarUrl = avatarUrl)
             }
         }
         viewModelScope.launch {
             if (_uiState.value.avatarUrl.isBlank()) {
-                val username = preferenceManager.usernameFlow.firstOrNull().orEmpty()
+                val username = sessionManager.currentUsername.orEmpty()
                 if (username.isNotBlank()) {
                     _uiState.value = _uiState.value.copy(
-                        avatarUrl = AvatarUrlFactory(appStateManager.domain).create(username)
+                        avatarUrl = AvatarUrlFactory(NetworkConfig.API_BASE_URL).create(username)
                     )
                 }
             }
@@ -67,7 +67,6 @@ class HomeViewModel @Inject constructor(
     fun logout() {
         viewModelScope.launch {
             accountRepository.logout()
-            appStateManager.clearUserInfo()
             _navigationEvent.value = SessionNavigationEvent.NavigateToLogin
         }
     }
@@ -86,7 +85,7 @@ class HomeViewModel @Inject constructor(
                 newPassword.length < 6 ->
                     _messageEvent.emit("New password must be at least 6 characters.")
                 else -> {
-                    val username = preferenceManager.usernameFlow.firstOrNull().orEmpty()
+                    val username = sessionManager.currentUsername.orEmpty()
                     if (username.isBlank()) {
                         _messageEvent.emit("No logged-in user found.")
                         return@launch
@@ -102,15 +101,14 @@ class HomeViewModel @Inject constructor(
 
     fun uploadAvatar(uri: Uri) {
         viewModelScope.launch {
-            val username = preferenceManager.usernameFlow.firstOrNull().orEmpty()
+            val username = sessionManager.currentUsername.orEmpty()
             if (username.isBlank()) {
                 _messageEvent.emit("No logged-in user found.")
                 return@launch
             }
             _uiState.value = _uiState.value.copy(isUploadingAvatar = true)
             accountRepository.uploadAvatar(username, uri)
-                .onSuccess { avatarUrl ->
-                    appStateManager.setAvatarUrl(avatarUrl)
+                .onSuccess {
                     _messageEvent.emit("Avatar updated.")
                 }
                 .onFailure { error ->

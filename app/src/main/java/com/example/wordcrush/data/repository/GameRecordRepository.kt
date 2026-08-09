@@ -2,9 +2,9 @@ package com.example.wordcrush.data.repository
 
 import com.example.wordcrush.Database.GameRecord.GameRecordDao
 import com.example.wordcrush.Database.GameRecord.GameRecordEntity
-import com.example.wordcrush.data.api.GameRecordApi
 import com.example.wordcrush.data.cache.AvatarCacheStore
-import com.example.wordcrush.data.local.PreferenceManager
+import com.example.wordcrush.data.remote.GameRecordRemoteDataSource
+import com.example.wordcrush.data.session.SessionManager
 import com.example.wordcrush.data.model.DeleteGameRecordRequest
 import com.example.wordcrush.data.model.GameRecordItem
 import com.example.wordcrush.data.model.RankingItem
@@ -20,14 +20,13 @@ import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
 
 @Singleton
 class GameRecordRepository @Inject constructor(
     private val gameRecordDao: GameRecordDao,
-    private val gameRecordApi: GameRecordApi,
-    private val preferenceManager: PreferenceManager,
+    private val remoteDataSource: GameRecordRemoteDataSource,
+    private val sessionManager: SessionManager,
     private val avatarCacheStore: AvatarCacheStore
 ) {
     private companion object {
@@ -76,14 +75,12 @@ class GameRecordRepository @Inject constructor(
         runCatching {
             val cacheKey = rankingCacheKey(gameType, limit)
             val cachedEntry = synchronized(rankingCache) { rankingCache[cacheKey] }
-            val response = gameRecordApi.getTopRankings(RankingRequest(gameType, limit))
-            val body = response.body()
-            if (!response.isSuccessful || body == null || !body.isSuccess()) {
-                cachedEntry?.let { return@runCatching it.items.toRankingItems() }
-                throw IllegalStateException("Unable to fetch ranking data.")
+            val remoteItems = runCatching {
+                remoteDataSource.getTopRankings(RankingRequest(gameType, limit)).data.orEmpty()
+            }.getOrElse { error ->
+                cachedEntry?.items?.let { return@runCatching it.toRankingItems() }
+                throw error
             }
-
-            val remoteItems = body.message.orEmpty()
             val signature = remoteItems.toSignature()
             val effectiveItems = synchronized(rankingCache) {
                 val current = rankingCache[cacheKey]
@@ -153,7 +150,7 @@ class GameRecordRepository @Inject constructor(
                 throw IllegalStateException("Record was not found.")
             }
 
-            val response = gameRecordApi.deleteGameRecord(
+            remoteDataSource.deleteGameRecord(
                 DeleteGameRecordRequest(
                     username = username,
                     gameType = record.gameType,
@@ -161,9 +158,7 @@ class GameRecordRepository @Inject constructor(
                     time = record.time
                 )
             )
-            if (!response.isSuccessful || response.body() == null || !response.body()!!.isSuccess()) {
-                LogUtils.w("Remote record deletion failed after local delete")
-            }
+            Unit
         }
     }
 
@@ -205,18 +200,17 @@ class GameRecordRepository @Inject constructor(
     }
 
     private suspend fun fetchRemoteEntities(username: String): List<GameRecordEntity> {
-        val response = gameRecordApi.getAllGameRecords(UsernameRequest(username))
-        val body = response.body()
-        if (!response.isSuccessful || body == null || !body.isSuccess()) {
-            throw IllegalStateException("Cloud sync failed.")
-        }
-        return body.message.orEmpty().map { remote -> remote.toGameRecordEntity() }
+        return remoteDataSource.getAllGameRecords(UsernameRequest(username))
+            .data
+            .orEmpty()
+            .map { remote -> remote.toGameRecordEntity() }
     }
 
     private suspend fun uploadRecordToCloud(request: SaveGameRecordRequest): Boolean {
-        val response = gameRecordApi.saveGameRecord(request)
-        val body = response.body()
-        return response.isSuccessful && body != null && body.isSuccess()
+        return runCatching {
+            remoteDataSource.saveGameRecord(request)
+            true
+        }.getOrDefault(false)
     }
 
     private fun buildLocalEntity(
@@ -258,7 +252,7 @@ class GameRecordRepository @Inject constructor(
     }
 
     private suspend fun currentUsername(): String? {
-        return preferenceManager.usernameFlow.firstOrNull()?.takeIf { it.isNotBlank() }
+        return sessionManager.currentUsername
     }
 }
 

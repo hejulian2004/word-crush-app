@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -32,55 +33,60 @@ class PreferenceManager @Inject constructor(
         private val ACTIVE_GAME_SESSIONS_KEY = stringPreferencesKey("active_game_sessions")
     }
 
-    val tokenFlow: Flow<String?> = context.dataStore.data.map { preferences ->
-        preferences[TOKEN_KEY]
-    }
-
-    val usernameFlow: Flow<String?> = context.dataStore.data.map { preferences ->
-        preferences[USERNAME_KEY]
-    }
-
-    val uidFlow: Flow<String?> = context.dataStore.data.map { preferences ->
-        preferences[UID_KEY]
-    }
-
-    val avatarUrlFlow: Flow<String?> = context.dataStore.data.map { preferences ->
-        preferences[AVATAR_URL_KEY]
-    }
+    data class PersistedSession(
+        val token: String,
+        val username: String,
+        val uid: String,
+        val avatarUrl: String
+    )
 
     val dailyWordTargetFlow: Flow<Int> = context.dataStore.data.map { preferences ->
         preferences[DAILY_WORD_TARGET_KEY] ?: DEFAULT_DAILY_WORD_TARGET
     }
 
-    suspend fun saveUserInfo(token: String, username: String, uid: String) {
-        val currentToken = tokenFlow.firstOrNull()
-        val currentUsername = usernameFlow.firstOrNull()
-        val currentUid = uidFlow.firstOrNull()
-        if (currentToken == token && currentUsername == username && currentUid == uid) {
-            return
+    suspend fun readSession(): PersistedSession? {
+        val preferences = context.dataStore.data.first()
+        val token = preferences[TOKEN_KEY].orEmpty()
+        if (token.isBlank()) {
+            return null
         }
+        return PersistedSession(
+            token = token,
+            username = preferences[USERNAME_KEY].orEmpty(),
+            uid = preferences[UID_KEY].orEmpty(),
+            avatarUrl = preferences[AVATAR_URL_KEY].orEmpty()
+        )
+    }
+
+    suspend fun saveSession(token: String, username: String, uid: String, avatarUrl: String) {
         context.dataStore.edit { preferences ->
             preferences[TOKEN_KEY] = token
             preferences[USERNAME_KEY] = username
             preferences[UID_KEY] = uid
+            if (avatarUrl.isBlank()) {
+                preferences.remove(AVATAR_URL_KEY)
+            } else {
+                preferences[AVATAR_URL_KEY] = avatarUrl
+            }
         }
     }
 
-    suspend fun saveToken(token: String) {
-        if (tokenFlow.firstOrNull() == token) {
-            return
-        }
+    suspend fun clearSession() {
         context.dataStore.edit { preferences ->
-            preferences[TOKEN_KEY] = token
+            preferences.remove(TOKEN_KEY)
+            preferences.remove(USERNAME_KEY)
+            preferences.remove(UID_KEY)
+            preferences.remove(AVATAR_URL_KEY)
         }
     }
 
     suspend fun saveAvatarUrl(url: String) {
-        if (avatarUrlFlow.firstOrNull() == url) {
-            return
-        }
         context.dataStore.edit { preferences ->
-            preferences[AVATAR_URL_KEY] = url
+            if (url.isBlank()) {
+                preferences.remove(AVATAR_URL_KEY)
+            } else {
+                preferences[AVATAR_URL_KEY] = url
+            }
         }
     }
 
@@ -167,9 +173,4 @@ class PreferenceManager @Inject constructor(
         }
     }
 
-    suspend fun isLoggedIn(): Boolean {
-        return context.dataStore.data.map { preferences ->
-            !preferences[TOKEN_KEY].isNullOrEmpty()
-        }.firstOrNull() == true
-    }
 }

@@ -2,15 +2,6 @@
 
 import com.google.gson.annotations.SerializedName
 
-data class LegacyApiResponse<T>(
-    @SerializedName("status")
-    val status: String,
-    @SerializedName("message")
-    val message: T? = null
-) {
-    fun isSuccess(): Boolean = status == "success"
-}
-
 data class RankingRequest(
     @SerializedName("gameType")
     val gameType: Int,

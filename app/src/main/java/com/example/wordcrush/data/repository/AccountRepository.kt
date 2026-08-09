@@ -4,18 +4,14 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
-import com.example.wordcrush.data.api.AccountApi
 import com.example.wordcrush.data.cache.AvatarCacheStore
-import com.example.wordcrush.data.local.PreferenceManager
-import com.example.wordcrush.data.model.ApiResponse
 import com.example.wordcrush.data.model.AvatarUploadResponse
 import com.example.wordcrush.data.model.LoginRequest
 import com.example.wordcrush.data.model.RegisterRequest
-import com.example.wordcrush.data.model.UserResponse
-import com.example.wordcrush.utils.AppStateManager
-import com.example.wordcrush.utils.AvatarUrlFactory
+import com.example.wordcrush.data.network.NetworkConfig
+import com.example.wordcrush.data.remote.AccountRemoteDataSource
+import com.example.wordcrush.data.session.SessionManager
 import com.example.wordcrush.utils.LogUtils
-import com.google.gson.Gson
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.ByteArrayOutputStream
 import javax.inject.Inject
@@ -23,13 +19,11 @@ import javax.inject.Singleton
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
-import retrofit2.Response
 
 @Singleton
 class AccountRepository @Inject constructor(
-    private val accountApi: AccountApi,
-    private val preferenceManager: PreferenceManager,
-    private val appStateManager: AppStateManager,
+    private val accountRemoteDataSource: AccountRemoteDataSource,
+    private val sessionManager: SessionManager,
     private val avatarCacheStore: AvatarCacheStore,
     @ApplicationContext private val context: Context
 ) {
@@ -39,29 +33,25 @@ class AccountRepository @Inject constructor(
         const val MIN_BITMAP_EDGE = 320
     }
 
-    private val gson = Gson()
-
     suspend fun login(username: String, password: String): Result<String> {
         return runCatching {
-            val response = accountApi.login(LoginRequest(username, password))
-            val apiResponse = requireSuccessfulBody(response)
-            val user = apiResponse.data ?: throw IllegalStateException(apiResponse.msg.ifBlank { "Login failed." })
-            persistUserSession(user)
+            val payload = accountRemoteDataSource.login(LoginRequest(username, password))
+            val user = payload.data ?: throw IllegalStateException(payload.message.ifBlank { "Login failed." })
+            sessionManager.establish(user)
             LogUtils.d("Login success: ${user.username}")
-            apiResponse.msg
+            payload.message
         }.onFailure { error ->
             LogUtils.e("Login error", error)
         }
     }
 
-    suspend fun checkToken(token: String): Result<String> {
+    suspend fun checkToken(): Result<String> {
         return runCatching {
-            val response = accountApi.checkToken(token)
-            val apiResponse = requireSuccessfulBody(response)
-            val user = apiResponse.data ?: throw IllegalStateException(apiResponse.msg.ifBlank { "Session validation failed." })
-            persistUserSession(user)
+            val payload = accountRemoteDataSource.checkToken()
+            val user = payload.data ?: throw IllegalStateException(payload.message.ifBlank { "Session validation failed." })
+            sessionManager.establish(user)
             LogUtils.d("Token validated for: ${user.username}")
-            apiResponse.msg
+            payload.message
         }.onFailure { error ->
             LogUtils.e("Check token error", error)
         }
@@ -69,10 +59,9 @@ class AccountRepository @Inject constructor(
 
     suspend fun register(username: String, password: String): Result<String> {
         return runCatching {
-            val response = accountApi.register(RegisterRequest(username, password))
-            val apiResponse = requireSuccessfulBody(response)
+            val payload = accountRemoteDataSource.register(RegisterRequest(username, password))
             LogUtils.d("Register success: $username")
-            apiResponse.msg
+            payload.message
         }.onFailure { error ->
             LogUtils.e("Register error", error)
         }
@@ -80,10 +69,9 @@ class AccountRepository @Inject constructor(
 
     suspend fun changePassword(username: String, oldPassword: String, newPassword: String): Result<String> {
         return runCatching {
-            val response = accountApi.changePassword(username, oldPassword, newPassword)
-            val apiResponse = requireSuccessfulBody(response)
+            val payload = accountRemoteDataSource.changePassword(username, oldPassword, newPassword)
             LogUtils.d("Password changed for: $username")
-            apiResponse.msg
+            payload.message
         }.onFailure { error ->
             LogUtils.e("Change password error", error)
         }
@@ -91,15 +79,14 @@ class AccountRepository @Inject constructor(
 
     suspend fun uploadAvatar(username: String, uri: Uri): Result<String> {
         return runCatching {
-            val response = accountApi.uploadAvatar(username, createAvatarPart(uri))
-            val apiResponse = requireSuccessfulBody(response)
-            val avatarResponse = apiResponse.data ?: AvatarUploadResponse(
+            val payload = accountRemoteDataSource.uploadAvatar(username, createAvatarPart(uri))
+            val avatarResponse = payload.data ?: AvatarUploadResponse(
                 username = username,
                 avatarUrl = "/api/user/avatar/$username",
                 avatarVersion = System.currentTimeMillis()
             )
             val avatarUrl = resolveAvatarUrl(avatarResponse)
-            preferenceManager.saveAvatarUrl(avatarUrl)
+            sessionManager.setAvatarUrl(avatarUrl)
             LogUtils.d("Avatar uploaded for: $username")
             avatarUrl
         }.onFailure { error ->
@@ -108,17 +95,9 @@ class AccountRepository @Inject constructor(
     }
 
     suspend fun logout() {
-        preferenceManager.clear()
+        sessionManager.clear()
         avatarCacheStore.clear()
         LogUtils.d("Logged out")
-    }
-
-    private suspend fun persistUserSession(user: UserResponse) {
-        preferenceManager.saveUserInfo(
-            token = user.token,
-            username = user.username,
-            uid = user.uid
-        )
     }
 
     private fun createAvatarPart(uri: Uri): MultipartBody.Part {
@@ -216,37 +195,7 @@ class AccountRepository @Inject constructor(
         if (response.avatarVersion > 0L) {
             return avatarCacheStore.resolve(response.username, response.avatarVersion)
         }
-        val normalizedBase = if (appStateManager.domain.endsWith("/")) {
-            appStateManager.domain.dropLast(1)
-        } else {
-            appStateManager.domain
-        }
+        val normalizedBase = NetworkConfig.API_BASE_URL.trimEnd('/')
         return "$normalizedBase${response.avatarUrl}"
     }
-
-    private fun <T> requireSuccessfulBody(response: Response<ApiResponse<T>>): ApiResponse<T> {
-        val body = response.body()
-        if (response.isSuccessful && body != null) {
-            if (body.isSuccess()) {
-                return body
-            }
-            throw IllegalStateException(body.msg.ifBlank { "Request failed." })
-        }
-        throw IllegalStateException(extractErrorMessage(response) ?: "Network request failed")
-    }
-
-    private fun extractErrorMessage(response: Response<*>): String? {
-        val errorText = response.errorBody()?.use { it.string() }?.trim().orEmpty()
-        if (errorText.isBlank()) {
-            return null
-        }
-        return runCatching {
-            gson.fromJson(errorText, ErrorResponse::class.java).msg
-        }.getOrNull()?.takeIf { it.isNotBlank() } ?: errorText
-    }
-
-    private data class ErrorResponse(
-        val code: Int = 0,
-        val msg: String = ""
-    )
 }

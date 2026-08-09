@@ -1,14 +1,12 @@
 ﻿package com.example.wordcrush.data.cache
 
-import com.example.wordcrush.utils.AppStateManager
+import com.example.wordcrush.data.network.NetworkConfig
 import com.example.wordcrush.utils.AvatarUrlFactory
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class AvatarCacheStore @Inject constructor(
-    private val appStateManager: AppStateManager
-) {
+class AvatarCacheStore @Inject constructor() {
     private companion object {
         const val MAX_CACHED_USERS = 50
     }
@@ -31,7 +29,7 @@ class AvatarCacheStore @Inject constructor(
             return cached.url
         }
 
-        val url = AvatarUrlFactory(appStateManager.domain).create(username, avatarVersion)
+        val url = AvatarUrlFactory(NetworkConfig.API_BASE_URL).create(username, avatarVersion)
         entries[username] = CachedAvatar(username, avatarVersion, url)
         return url
     }
