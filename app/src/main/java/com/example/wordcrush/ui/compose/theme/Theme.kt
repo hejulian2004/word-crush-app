@@ -5,7 +5,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 
 private val LightColors = lightColorScheme(
     primary = WordCrushBlue,
@@ -19,14 +18,14 @@ private val LightColors = lightColorScheme(
     surface = WordCrushSurface,
     onSurface = WordCrushBlue,
     surfaceVariant = WordCrushSurfaceVariant,
-    onSurfaceVariant = Color(0xFF4B4B4B),
-    primaryContainer = Color(0xFFDADAD7),
+    onSurfaceVariant = WordCrushLightOnSurfaceVariant,
+    primaryContainer = WordCrushLightPrimaryContainer,
     onPrimaryContainer = WordCrushBlue,
-    secondaryContainer = Color(0xFFE4E4E1),
+    secondaryContainer = WordCrushLightSecondaryContainer,
     onSecondaryContainer = WordCrushBlue,
-    outline = Color(0xFF9A9A95),
-    outlineVariant = Color(0xFFC9C9C3),
-    error = Color(0xFF505050),
+    outline = WordCrushLightOutline,
+    outlineVariant = WordCrushLightOutlineVariant,
+    error = WordCrushLightError,
     onError = WordCrushSurface
 )
 
@@ -42,14 +41,14 @@ private val DarkColors = darkColorScheme(
     surface = WordCrushNightSurface,
     onSurface = WordCrushBlueDark,
     surfaceVariant = WordCrushNightVariant,
-    onSurfaceVariant = Color(0xFFC1C1C6),
-    primaryContainer = Color(0xFF303033),
+    onSurfaceVariant = WordCrushDarkOnSurfaceVariant,
+    primaryContainer = WordCrushDarkPrimaryContainer,
     onPrimaryContainer = WordCrushBlueDark,
-    secondaryContainer = Color(0xFF262629),
+    secondaryContainer = WordCrushDarkSecondaryContainer,
     onSecondaryContainer = WordCrushBlueDark,
-    outline = Color(0xFF7C7C82),
-    outlineVariant = Color(0xFF444449),
-    error = Color(0xFFB4B4B4),
+    outline = WordCrushDarkOutline,
+    outlineVariant = WordCrushDarkOutlineVariant,
+    error = WordCrushDarkError,
     onError = WordCrushNight
 )
 

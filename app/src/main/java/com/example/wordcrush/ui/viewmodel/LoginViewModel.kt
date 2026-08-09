@@ -2,6 +2,7 @@ package com.example.wordcrush.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.wordcrush.constants.AppStrings
 import com.example.wordcrush.domain.usecase.LoginUseCase
 import com.example.wordcrush.domain.usecase.RestoreSessionUseCase
 import com.example.wordcrush.ui.architecture.UdfStore
@@ -73,7 +74,7 @@ class LoginViewModel @Inject constructor(
                     emitEffect(LoginEffect.LoginSucceeded)
                 }
                 .onFailure { error ->
-                    val message = error.message ?: "Login failed."
+                    val message = error.message ?: AppStrings.Errors.LOGIN_FAILED
                     setState(currentState.copy(isLoading = false, error = message))
                     emitEffect(LoginEffect.ShowMessage(message))
                 }

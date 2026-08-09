@@ -1,4 +1,6 @@
-﻿package com.example.wordcrush.data.model
+package com.example.wordcrush.data.model
+
+import com.example.wordcrush.constants.AppStrings
 
 data class GameRecordItem(
     val id: Int = 0,
@@ -8,7 +10,7 @@ data class GameRecordItem(
     val learnedWords: List<String>
 ) {
     val gameTypeLabel: String
-        get() = if (gameType == 0) "Match Challenge" else "Timed Match"
+        get() = AppStrings.Records.modeTitle(gameType == 0)
 
     val wordProgress: List<RecordWordProgress>
         get() = RecordWordProgressCodec.decodeAll(learnedWords)

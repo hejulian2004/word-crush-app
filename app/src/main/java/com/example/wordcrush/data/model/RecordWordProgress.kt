@@ -1,4 +1,7 @@
-﻿package com.example.wordcrush.data.model
+package com.example.wordcrush.data.model
+
+import com.example.wordcrush.constants.AppConstants
+import com.example.wordcrush.constants.AppStrings
 
 data class RecordWordProgress(
     val english: String,
@@ -6,22 +9,19 @@ data class RecordWordProgress(
     val isLearned: Boolean
 ) {
     val displayLabel: String
-        get() = if (isLearned) {
-            "$english Learned"
-        } else {
-            "$english ${correctCount.coerceIn(1, 3)}/3"
-        }
+        get() = AppStrings.Records.progressLabel(english, correctCount, isLearned)
 }
 
 object RecordWordProgressCodec {
-    private const val SEPARATOR = "|#|"
-
     fun encode(progress: RecordWordProgress): String {
         return listOf(
             progress.english,
-            progress.correctCount.coerceIn(1, 3).toString(),
+            progress.correctCount.coerceIn(
+                1,
+                AppConstants.Learning.REQUIRED_CORRECT_MATCHES
+            ).toString(),
             progress.isLearned.toString()
-        ).joinToString(SEPARATOR)
+        ).joinToString(AppConstants.Records.PROGRESS_SEPARATOR)
     }
 
     fun encodeAll(progressItems: Collection<RecordWordProgress>): List<String> {
@@ -38,17 +38,20 @@ object RecordWordProgressCodec {
             return null
         }
 
-        val parts = normalized.split(SEPARATOR)
-        if (parts.size != 3) {
+        val parts = normalized.split(AppConstants.Records.PROGRESS_SEPARATOR)
+        if (parts.size != AppConstants.Records.PROGRESS_PART_COUNT) {
             return RecordWordProgress(
                 english = normalized,
-                correctCount = 3,
+                correctCount = AppConstants.Learning.REQUIRED_CORRECT_MATCHES,
                 isLearned = true
             )
         }
 
         val english = parts[0].trim().ifBlank { return null }
-        val correctCount = parts[1].toIntOrNull()?.coerceIn(1, 3) ?: 1
+        val correctCount = parts[1].toIntOrNull()?.coerceIn(
+            1,
+            AppConstants.Learning.REQUIRED_CORRECT_MATCHES
+        ) ?: 1
         val isLearned = parts[2].toBooleanStrictOrNull() ?: false
         return RecordWordProgress(
             english = english,

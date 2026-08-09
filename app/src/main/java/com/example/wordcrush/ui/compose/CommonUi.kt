@@ -41,6 +41,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.wordcrush.constants.AppStrings
 
 @Composable
 internal fun LoadingScreen(message: String) {
@@ -138,7 +139,7 @@ internal fun ScreenScaffold(
                 title = { Text(title) },
                 navigationIcon = {
                     TextButton(onClick = onBack) {
-                        Text("Back")
+                        Text(AppStrings.Common.BACK)
                     }
                 },
                 colors = appBarColors
@@ -163,7 +164,7 @@ internal fun ScreenScaffold(
                 title = { Text(title) },
                 navigationIcon = {
                     TextButton(onClick = onBack) {
-                        Text("Back")
+                        Text(AppStrings.Common.BACK)
                     }
                 },
                 colors = appBarColors

@@ -3,6 +3,8 @@ package com.example.wordcrush.ui.viewmodel
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.wordcrush.constants.AppConstants
+import com.example.wordcrush.constants.AppStrings
 import com.example.wordcrush.data.network.NetworkConfig
 import com.example.wordcrush.domain.usecase.ChangePasswordUseCase
 import com.example.wordcrush.domain.usecase.GetDailyLearningPlanUseCase
@@ -157,7 +159,7 @@ class HomeViewModel @Inject constructor(
                 )
             }
             emitEffect(HomeEffect.ShowMessage(result.getOrElse { error ->
-                error.message ?: "Unable to update password."
+                error.message ?: AppStrings.Errors.PASSWORD_UPDATE_FAILED
             }))
         }
     }
@@ -166,9 +168,13 @@ class HomeViewModel @Inject constructor(
         launchAction {
             updateState { it.copy(isUploadingAvatar = true) }
             uploadAvatarUseCase(uri)
-                .onSuccess { emitEffect(HomeEffect.ShowMessage("Avatar updated.")) }
+                .onSuccess { emitEffect(HomeEffect.ShowMessage(AppStrings.Errors.AVATAR_UPDATED)) }
                 .onFailure { error ->
-                    emitEffect(HomeEffect.ShowMessage(error.message ?: "Avatar upload failed."))
+                    emitEffect(
+                        HomeEffect.ShowMessage(
+                            error.message ?: AppStrings.Errors.AVATAR_UPLOAD_FAILED
+                        )
+                    )
                 }
             updateState { it.copy(isUploadingAvatar = false) }
         }
@@ -182,26 +188,21 @@ class HomeViewModel @Inject constructor(
             recordsResult
                 .onSuccess { result ->
                     refreshDataAfterAction()
-                    val message = buildString {
-                        append("Cloud data synced.")
-                        if (learningResult.isFailure) {
-                            append(" Learning progress is still pending.")
-                        }
-                        if (result.uploadedCount > 0) {
-                            append(" Uploaded ")
-                            append(result.uploadedCount)
-                            append(" local record")
-                            if (result.uploadedCount > 1) append("s")
-                            append(".")
-                        }
-                    }
+                    val message = AppStrings.Profile.syncSummary(
+                        uploadedCount = result.uploadedCount,
+                        learningPending = learningResult.isFailure
+                    )
                     emitEffect(HomeEffect.ShowMessage(message))
                 }
                 .onFailure { error ->
-                    emitEffect(HomeEffect.ShowMessage(error.message ?: "Cloud sync failed."))
+                    emitEffect(
+                        HomeEffect.ShowMessage(error.message ?: AppStrings.Errors.CLOUD_SYNC_FAILED)
+                    )
                 }
             learningResult.onFailure { error ->
-                emitEffect(HomeEffect.ShowMessage(error.message ?: "Learning progress sync failed."))
+                emitEffect(
+                    HomeEffect.ShowMessage(error.message ?: AppStrings.Errors.LEARNING_SYNC_FAILED)
+                )
             }
             val pendingMutations = getPendingLearningMutationsUseCase()
             updateState { it.copy(pendingLearningMutations = pendingMutations) }
@@ -228,11 +229,11 @@ class HomeViewModel @Inject constructor(
                         pendingLearningMutations = pendingMutations
                     )
                 }
-                emitEffect(HomeEffect.ShowMessage("Daily learning count updated."))
+                emitEffect(HomeEffect.ShowMessage(AppStrings.Errors.DAILY_TARGET_UPDATED))
             } else {
                 emitEffect(HomeEffect.ShowMessage(
                     result.exceptionOrNull()?.message
-                        ?: "Please enter a daily learning count greater than 0."
+                        ?: AppStrings.Errors.DAILY_TARGET_INVALID
                 ))
             }
         }
@@ -272,8 +273,8 @@ data class HomeUiState(
     val error: String? = null,
     val breakthroughScore: Int = 0,
     val timeLimitScore: Int = 0,
-    val dailyTarget: Int = DEFAULT_DAILY_WORD_TARGET,
-    val dailyTargetInput: String = DEFAULT_DAILY_WORD_TARGET.toString(),
+    val dailyTarget: Int = AppConstants.Learning.DEFAULT_DAILY_WORD_TARGET,
+    val dailyTargetInput: String = AppConstants.Learning.DEFAULT_DAILY_WORD_TARGET.toString(),
     val todayWordCount: Int = 0,
     val completedTodayCount: Int = 0,
     val allWordsMastered: Boolean = false,

@@ -51,6 +51,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.wordcrush.constants.AppConstants
+import com.example.wordcrush.constants.AppStrings
 import com.example.wordcrush.data.model.GameRecordItem
 import com.example.wordcrush.data.model.RankingItem
 import com.example.wordcrush.data.model.WordItem
@@ -96,7 +98,7 @@ internal fun WordBookRoute(
                 !uiState.isAppending &&
                 uiState.canLoadMore &&
                 totalCount > 0 &&
-                lastVisibleIndex >= totalCount - 6
+                lastVisibleIndex >= totalCount - AppConstants.WordBook.LOAD_MORE_THRESHOLD
             ) {
                 viewModel.onAction(WordBookAction.LoadMore)
             }
@@ -114,8 +116,8 @@ internal fun WordBookRoute(
     ) {
         item {
             ScreenHeader(
-                title = "Word Book",
-                subtitle = "Search, review and mark vocabulary mastery."
+                title = AppStrings.WordBook.TITLE,
+                subtitle = AppStrings.WordBook.SUBTITLE
             )
         }
         item {
@@ -128,7 +130,7 @@ internal fun WordBookRoute(
                     value = uiState.query,
                     onValueChange = { viewModel.onAction(WordBookAction.QueryChanged(it)) },
                     modifier = Modifier.weight(1f),
-                    label = { Text("Search words") },
+                    label = { Text(AppStrings.WordBook.SEARCH_WORDS) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search)
                 )
@@ -139,7 +141,7 @@ internal fun WordBookRoute(
                         onClick = { viewModel.onAction(WordBookAction.ApplySearch) },
                         modifier = Modifier.height(dims.inputHeight)
                     ) {
-                        Text("Search")
+                        Text(AppStrings.Common.SEARCH)
                     }
                 }
             }
@@ -229,8 +231,8 @@ internal fun HomeRoute(
         verticalArrangement = Arrangement.spacedBy(dims.sectionSpacing)
     ) {
         ScreenHeader(
-            title = "Profile",
-            subtitle = "Progress, daily plan and account actions."
+            title = AppStrings.Profile.TITLE,
+            subtitle = AppStrings.Profile.SUBTITLE
         )
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -246,7 +248,7 @@ internal fun HomeRoute(
             ) {
                 UserAvatar(
                     imageUrl = uiState.avatarUrl,
-                    fallbackLabel = uiState.username.ifBlank { "Guest" }.take(1).uppercase(),
+                    fallbackLabel = uiState.username.ifBlank { AppStrings.Common.GUEST }.take(1).uppercase(),
                     size = dims.avatarSize
                 )
                 Spacer(modifier = Modifier.width(dims.pagePadding))
@@ -256,20 +258,26 @@ internal fun HomeRoute(
                         horizontalArrangement = Arrangement.spacedBy(dims.controlSpacing)
                     ) {
                         Text(
-                            text = uiState.username.ifBlank { "Guest" },
+                            text = uiState.username.ifBlank { AppStrings.Common.GUEST },
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.SemiBold
                         )
                         OutlinedButton(
-                            onClick = { avatarPicker.launch("image/*") },
+                            onClick = { avatarPicker.launch(AppStrings.Profile.IMAGE_CONTENT_TYPE) },
                             enabled = !uiState.isUploadingAvatar,
                             modifier = Modifier.height(dims.scaled(36.dp))
                         ) {
-                            Text(if (uiState.isUploadingAvatar) "Uploading..." else "Upload")
+                            Text(
+                                if (uiState.isUploadingAvatar) {
+                                    AppStrings.Profile.UPLOADING
+                                } else {
+                                    AppStrings.Profile.UPLOAD
+                                }
+                            )
                         }
                     }
                     Text(
-                        text = "Learning profile",
+                        text = AppStrings.Profile.LEARNING_PROFILE,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -289,16 +297,16 @@ internal fun HomeRoute(
                 verticalArrangement = Arrangement.spacedBy(dims.compactSpacing)
             ) {
                 Text(
-                    text = "Score summary",
+                    text = AppStrings.Profile.SCORE_SUMMARY,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "Match: ${uiState.breakthroughScore}",
+                    text = AppStrings.Profile.matchScore(uiState.breakthroughScore),
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
-                    text = "Timed: ${uiState.timeLimitScore}",
+                    text = AppStrings.Profile.timedScore(uiState.timeLimitScore),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -317,28 +325,31 @@ internal fun HomeRoute(
                 verticalArrangement = Arrangement.spacedBy(dims.controlSpacing)
             ) {
                 Text(
-                    text = "Daily learning plan",
+                    text = AppStrings.Profile.DAILY_PLAN,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
                     text = when {
-                        uiState.allWordsMastered -> "All words have already been learned."
+                        uiState.allWordsMastered -> AppStrings.Profile.ALL_WORDS_LEARNED
                         uiState.dailyCompleted && uiState.canIncreaseDailyTarget ->
-                            "Today's words are done. Increase the daily learning count if you want more words today."
+                            AppStrings.Profile.DAILY_WORDS_DONE
                         uiState.dailyCompleted ->
-                            "Today's fixed set is complete."
+                            AppStrings.Profile.FIXED_SET_COMPLETE
                         else ->
-                            "Today's fixed set: ${uiState.completedTodayCount}/${uiState.todayWordCount} learned. Each word needs 3 correct matches."
+                            AppStrings.Profile.fixedSetProgress(
+                                uiState.completedTodayCount,
+                                uiState.todayWordCount
+                            )
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = if (uiState.pendingLearningMutations == 0) {
-                        "Learning progress is synced."
+                        AppStrings.Profile.LEARNING_PROGRESS_SYNCED
                     } else {
-                        "${uiState.pendingLearningMutations} learning updates are waiting for network sync."
+                        AppStrings.Profile.pendingLearning(uiState.pendingLearningMutations)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -352,7 +363,7 @@ internal fun HomeRoute(
                         value = uiState.dailyTargetInput,
                         onValueChange = { viewModel.onAction(HomeAction.DailyTargetChanged(it)) },
                         modifier = Modifier.weight(1f),
-                        label = { Text("Daily word count") },
+                        label = { Text(AppStrings.Profile.DAILY_WORD_COUNT) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(
                             imeAction = ImeAction.Done,
@@ -363,7 +374,7 @@ internal fun HomeRoute(
                         onClick = { viewModel.onAction(HomeAction.SaveDailyTarget) },
                         modifier = Modifier.height(dims.inputHeight)
                     ) {
-                        Text("Save")
+                        Text(AppStrings.Common.SAVE)
                     }
                 }
             }
@@ -381,7 +392,7 @@ internal fun HomeRoute(
                 verticalArrangement = Arrangement.spacedBy(dims.controlSpacing)
             ) {
                 Text(
-                    text = "Quick actions",
+                    text = AppStrings.Profile.QUICK_ACTIONS,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -391,7 +402,7 @@ internal fun HomeRoute(
                         .fillMaxWidth()
                         .height(dims.inputHeight)
                 ) {
-                    Text("Game records")
+                    Text(AppStrings.Common.RECORDS)
                 }
                 FilledTonalButton(
                     onClick = { viewModel.onAction(HomeAction.SyncCloudData) },
@@ -399,7 +410,7 @@ internal fun HomeRoute(
                         .fillMaxWidth()
                         .height(dims.inputHeight)
                 ) {
-                    Text("Sync cloud data")
+                    Text(AppStrings.Profile.SYNC_CLOUD_DATA)
                 }
                 OutlinedButton(
                     onClick = { viewModel.onAction(HomeAction.Refresh) },
@@ -407,7 +418,7 @@ internal fun HomeRoute(
                         .fillMaxWidth()
                         .height(dims.inputHeight)
                 ) {
-                    Text("Refresh scores")
+                    Text(AppStrings.Profile.REFRESH_SCORES)
                 }
                 OutlinedButton(
                     onClick = { viewModel.onAction(HomeAction.ShowPasswordDialog) },
@@ -415,7 +426,7 @@ internal fun HomeRoute(
                         .fillMaxWidth()
                         .height(dims.inputHeight)
                 ) {
-                    Text("Change password")
+                    Text(AppStrings.Profile.CHANGE_PASSWORD)
                 }
             }
         }
@@ -425,7 +436,7 @@ internal fun HomeRoute(
                 .fillMaxWidth()
                 .height(dims.inputHeight)
         ) {
-            Text("Log out")
+            Text(AppStrings.Profile.LOG_OUT)
         }
         Spacer(modifier = Modifier.height(dims.scaled(24.dp)))
     }
@@ -433,27 +444,27 @@ internal fun HomeRoute(
     if (uiState.showPasswordDialog) {
         AlertDialog(
             onDismissRequest = { viewModel.onAction(HomeAction.DismissPasswordDialog) },
-            title = { Text("Change password") },
+            title = { Text(AppStrings.Profile.CHANGE_PASSWORD) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
                         value = uiState.oldPassword,
                         onValueChange = { viewModel.onAction(HomeAction.OldPasswordChanged(it)) },
-                        label = { Text("Current password") },
+                        label = { Text(AppStrings.Profile.CURRENT_PASSWORD) },
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation()
                     )
                     OutlinedTextField(
                         value = uiState.newPassword,
                         onValueChange = { viewModel.onAction(HomeAction.NewPasswordChanged(it)) },
-                        label = { Text("New password") },
+                        label = { Text(AppStrings.Profile.NEW_PASSWORD) },
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation()
                     )
                     OutlinedTextField(
                         value = uiState.confirmPassword,
                         onValueChange = { viewModel.onAction(HomeAction.ConfirmPasswordChanged(it)) },
-                        label = { Text("Confirm new password") },
+                        label = { Text(AppStrings.Profile.CONFIRM_NEW_PASSWORD) },
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation()
                     )
@@ -461,12 +472,12 @@ internal fun HomeRoute(
             },
             confirmButton = {
                 Button(onClick = { viewModel.onAction(HomeAction.SubmitPasswordChange) }) {
-                    Text("Update")
+                    Text(AppStrings.Common.UPDATE)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.onAction(HomeAction.DismissPasswordDialog) }) {
-                    Text("Cancel")
+                    Text(AppStrings.Common.CANCEL)
                 }
             }
         )
@@ -495,15 +506,15 @@ internal fun RankingRoute(
     }
 
     ScreenScaffold(
-        title = if (gameType == 0) "Match ranking" else "Timed ranking",
+        title = AppStrings.Ranking.title(gameType == 0),
         onBack = onBack,
         scrollable = false
     ) {
         when {
             uiState.isLoading -> LoadingSection()
             uiState.rankings.isEmpty() -> EmptyStateCard(
-                title = "No ranking data",
-                message = "Play a few rounds and sync the leaderboard again."
+                title = AppStrings.Ranking.NO_DATA,
+                message = AppStrings.Ranking.EMPTY_MESSAGE
             )
             else -> RankingContent(
                 rankings = uiState.rankings,
@@ -534,15 +545,15 @@ internal fun GameRecordRoute(
     }
 
     ScreenScaffold(
-        title = "Game records",
+        title = AppStrings.Records.TITLE,
         onBack = onBack,
         scrollable = false
     ) {
         when {
             uiState.isLoading -> LoadingSection()
             uiState.records.isEmpty() -> EmptyStateCard(
-                title = "No local records",
-                message = "Finish a game to create your first record."
+                title = AppStrings.Records.NO_RECORDS,
+                message = AppStrings.Records.EMPTY_MESSAGE
             )
             else -> GameRecordContent(
                 records = uiState.records,
@@ -560,18 +571,18 @@ internal fun GameRecordRoute(
     if (uiState.pendingDelete != null) {
         AlertDialog(
             onDismissRequest = { viewModel.onAction(GameRecordAction.DismissDelete) },
-            title = { Text("Delete record") },
-            text = { Text("This removes the local record and attempts to sync the deletion to the server.") },
+            title = { Text(AppStrings.Records.DELETE_TITLE) },
+            text = { Text(AppStrings.Records.DELETE_MESSAGE) },
             confirmButton = {
                 Button(onClick = {
                     viewModel.onAction(GameRecordAction.ConfirmDelete)
                 }) {
-                    Text("Delete")
+                    Text(AppStrings.Common.DELETE)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.onAction(GameRecordAction.DismissDelete) }) {
-                    Text("Cancel")
+                    Text(AppStrings.Common.CANCEL)
                 }
             }
         )
@@ -586,7 +597,7 @@ private fun WordItemCard(
     onMasteryChanged: (Boolean) -> Unit
 ) {
     val dims = appDimens()
-    val statusLabel = if (word.isMastered) "Remembered" else "Learning"
+    val statusLabel = if (word.isMastered) AppStrings.WordBook.REMEMBERED else AppStrings.Common.LEARNING
 
     OutlinedCard(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -628,22 +639,22 @@ private fun WordItemCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(dims.chipSpacing)) {
-                        AssistChip(onClick = onPlayUk, label = { Text("UK") })
-                        AssistChip(onClick = onPlayUs, label = { Text("US") })
+                        AssistChip(onClick = onPlayUk, label = { Text(AppStrings.Common.UK) })
+                        AssistChip(onClick = onPlayUs, label = { Text(AppStrings.Common.US) })
                     }
                     if (word.isMastered) {
                         OutlinedButton(
                             onClick = { onMasteryChanged(false) },
                             modifier = Modifier.height(dims.inputHeight)
                         ) {
-                            Text("Reset")
+                            Text(AppStrings.Common.RESET)
                         }
                     } else {
                         FilledTonalButton(
                             onClick = { onMasteryChanged(true) },
                             modifier = Modifier.height(dims.inputHeight)
                         ) {
-                            Text("Mark")
+                            Text(AppStrings.Common.MARK)
                         }
                     }
                 }
@@ -674,7 +685,7 @@ private fun RankingOverviewCard(
 ) {
     val dims = appDimens()
     val topScore = rankings.maxOfOrNull { it.score } ?: 0
-    val title = if (gameType == 0) "Match Challenge" else "Timed Match"
+    val title = AppStrings.Records.modeTitle(gameType == 0)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -694,7 +705,7 @@ private fun RankingOverviewCard(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Top players are ranked by best score, with earlier finish times breaking ties.",
+                text = AppStrings.Ranking.TOP_PLAYERS_DESCRIPTION,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -703,12 +714,12 @@ private fun RankingOverviewCard(
                 horizontalArrangement = Arrangement.spacedBy(dims.controlSpacing)
             ) {
                 StatCard(
-                    title = "Players",
+                    title = AppStrings.Ranking.PLAYERS,
                     value = rankings.size.toString(),
                     modifier = Modifier.weight(1f)
                 )
                 StatCard(
-                    title = "Top score",
+                    title = AppStrings.Ranking.TOP_SCORE,
                     value = topScore.toString(),
                     modifier = Modifier.weight(1f)
                 )
@@ -735,7 +746,7 @@ private fun RankingList(
             }
         ) { index ->
             val item = rankings[index]
-            if (index < 3) {
+            if (index < AppConstants.Ranking.HIGHLIGHT_COUNT) {
                 RankingHighlightCard(index = index, item = item)
             } else {
                 RankingStandardCard(index = index, item = item)
@@ -777,7 +788,7 @@ private fun RankingHighlightCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Rank #${index + 1}",
+                    text = AppStrings.Ranking.rank(index),
                     style = MaterialTheme.typography.labelLarge,
                     color = onContainerColor.copy(alpha = 0.8f)
                 )
@@ -831,12 +842,12 @@ private fun RankingStandardCard(
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = "#${index + 1}",
+                    text = AppStrings.Ranking.compactRank(index),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Score",
+                    text = AppStrings.Common.SCORE,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -923,12 +934,12 @@ private fun RecordOverviewCard(records: List<GameRecordItem>) {
             verticalArrangement = Arrangement.spacedBy(dims.controlSpacing)
         ) {
             Text(
-                text = "Your recent runs",
+                text = AppStrings.Records.YOUR_RECENT_RUNS,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Review saved sessions, compare modes and reopen the learned words from each run.",
+                text = AppStrings.Records.RECENT_RUNS_DESCRIPTION,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -937,17 +948,17 @@ private fun RecordOverviewCard(records: List<GameRecordItem>) {
                 horizontalArrangement = Arrangement.spacedBy(dims.controlSpacing)
             ) {
                 StatCard(
-                    title = "Records",
+                    title = AppStrings.Common.RECORDS,
                     value = records.size.toString(),
                     modifier = Modifier.weight(1f)
                 )
                 StatCard(
-                    title = "Best score",
+                    title = AppStrings.Records.BEST_SCORE,
                     value = bestScore.toString(),
                     modifier = Modifier.weight(1f)
                 )
                 StatCard(
-                    title = "Words",
+                    title = AppStrings.Common.WORDS,
                     value = learnedWordTotal.toString(),
                     modifier = Modifier.weight(1f)
                 )
@@ -1007,7 +1018,7 @@ private fun RecordCard(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Score",
+                        text = AppStrings.Common.SCORE,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1025,15 +1036,17 @@ private fun RecordCard(
                 AssistChip(
                     onClick = { },
                     enabled = false,
-                    label = { Text("${record.wordProgress.size} matched") }
+                    label = { Text(AppStrings.WordBook.matched(record.wordProgress.size)) }
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(dims.controlSpacing)) {
                 FilledTonalButton(onClick = onToggleExpanded) {
-                    Text(if (expanded) "Hide details" else "View details")
+                    Text(
+                        if (expanded) AppStrings.Records.HIDE_DETAILS else AppStrings.Records.VIEW_DETAILS
+                    )
                 }
                 TextButton(onClick = onDelete) {
-                    Text("Delete")
+                    Text(AppStrings.Common.DELETE)
                 }
             }
             if (expanded) {
@@ -1050,14 +1063,14 @@ private fun RecordCard(
                         verticalArrangement = Arrangement.spacedBy(dims.compactSpacing)
                     ) {
                         Text(
-                            text = "Learned words",
+                            text = AppStrings.Records.LEARNED_WORDS,
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold
                         )
                         HorizontalDivider()
                         if (record.wordProgress.isEmpty()) {
                             Text(
-                                text = "No learned words saved for this record.",
+                                text = AppStrings.Records.NO_LEARNED_WORDS,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -1065,7 +1078,7 @@ private fun RecordCard(
                             Column(verticalArrangement = Arrangement.spacedBy(dims.scaled(6.dp))) {
                                 record.wordProgress.forEachIndexed { index, progress ->
                                     Text(
-                                        text = "${index + 1}. ${progress.displayLabel}",
+                                        text = AppStrings.WordBook.numbered(index, progress.displayLabel),
                                         style = MaterialTheme.typography.bodyMedium
                                     )
                                 }
@@ -1080,9 +1093,9 @@ private fun RecordCard(
 
 private fun WordFilter.toDisplayName(): String {
     return when (this) {
-        WordFilter.ALL -> "All"
-        WordFilter.MASTERED -> "Mastered"
-        WordFilter.UNMASTERED -> "Learning"
+        WordFilter.ALL -> AppStrings.Common.ALL
+        WordFilter.MASTERED -> AppStrings.Common.MASTERED
+        WordFilter.UNMASTERED -> AppStrings.Common.LEARNING
     }
 }
 

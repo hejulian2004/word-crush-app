@@ -2,6 +2,8 @@ package com.example.wordcrush.data.repository
 
 import com.example.wordcrush.Database.LearningMutationDao
 import com.example.wordcrush.Database.LearningMutationEntity
+import com.example.wordcrush.constants.AppConstants
+import com.example.wordcrush.constants.AppStrings
 import com.example.wordcrush.data.local.PreferenceManager
 import com.example.wordcrush.data.model.DailyLearningPlan
 import com.example.wordcrush.data.model.LearningMutationRequest
@@ -26,15 +28,6 @@ class LearningRepository @Inject constructor(
     private val mutationDao: LearningMutationDao,
     private val preferenceManager: PreferenceManager
 ) {
-    companion object {
-        const val CORRECT_MATCH = "CORRECT_MATCH"
-        const val MARK_UNREMEMBERED = "MARK_UNREMEMBERED"
-        const val IMPORT_SNAPSHOT = "IMPORT_SNAPSHOT"
-        const val UPDATE_DAILY_TARGET = "UPDATE_DAILY_TARGET"
-        private const val CATALOG_PAGE_SIZE = 1_000
-        private const val SYNC_BATCH_SIZE = 200
-    }
-
     private val syncMutex = Mutex()
     private var catalogLoaded = false
 
@@ -48,8 +41,11 @@ class LearningRepository @Inject constructor(
                     .forEach { word ->
                         enqueueLocked(
                             wordId = word.id,
-                            operation = IMPORT_SNAPSHOT,
-                            masterCount = word.masterCount.coerceIn(0, 3)
+                            operation = AppConstants.Learning.IMPORT_SNAPSHOT,
+                            masterCount = word.masterCount.coerceIn(
+                                0,
+                                AppConstants.Learning.REQUIRED_CORRECT_MATCHES
+                            )
                         )
                     }
                 syncLocked().getOrThrow()
@@ -100,14 +96,21 @@ class LearningRepository @Inject constructor(
 
     suspend fun saveDailyTarget(input: String): Result<Int> {
         val target = input.toIntOrNull()
-        if (target == null || target <= 0 || target > 500) {
+        if (
+            target == null ||
+            target < AppConstants.Learning.MIN_DAILY_WORD_TARGET ||
+            target > AppConstants.Learning.MAX_DAILY_WORD_TARGET
+        ) {
             return Result.failure(
-                IllegalArgumentException("Please enter a daily learning count between 1 and 500.")
+                IllegalArgumentException(AppStrings.Errors.DAILY_TARGET_RANGE)
             )
         }
         preferenceManager.saveDailyWordTarget(target)
         syncMutex.withLock {
-            enqueueLocked(operation = UPDATE_DAILY_TARGET, dailyTarget = target)
+            enqueueLocked(
+                operation = AppConstants.Learning.UPDATE_DAILY_TARGET,
+                dailyTarget = target
+            )
         }
         syncPending()
         return Result.success(target)
@@ -119,8 +122,16 @@ class LearningRepository @Inject constructor(
             syncMutex.withLock {
                 enqueueLocked(
                     wordId = wordId,
-                    operation = if (isMastered) IMPORT_SNAPSHOT else MARK_UNREMEMBERED,
-                    masterCount = if (isMastered) 3 else 0
+                    operation = if (isMastered) {
+                        AppConstants.Learning.IMPORT_SNAPSHOT
+                    } else {
+                        AppConstants.Learning.MARK_UNREMEMBERED
+                    },
+                    masterCount = if (isMastered) {
+                        AppConstants.Learning.REQUIRED_CORRECT_MATCHES
+                    } else {
+                        0
+                    }
                 )
             }
         }
@@ -132,7 +143,7 @@ class LearningRepository @Inject constructor(
         val updated = wordRepository.recordCorrectMatch(wordId)
         if (updated != null) {
             syncMutex.withLock {
-                enqueueLocked(wordId = wordId, operation = CORRECT_MATCH)
+                enqueueLocked(wordId = wordId, operation = AppConstants.Learning.CORRECT_MATCH)
             }
         }
         return updated
@@ -143,7 +154,10 @@ class LearningRepository @Inject constructor(
         if (wordIds.isEmpty()) return
         syncMutex.withLock {
             wordIds.forEach { wordId ->
-                enqueueLocked(wordId = wordId, operation = MARK_UNREMEMBERED)
+                enqueueLocked(
+                    wordId = wordId,
+                    operation = AppConstants.Learning.MARK_UNREMEMBERED
+                )
             }
         }
     }
@@ -165,9 +179,12 @@ class LearningRepository @Inject constructor(
     private suspend fun refreshCatalogLocked() {
         var page = 0
         while (true) {
-            val catalog = remoteDataSource.getCatalog(page = page, size = CATALOG_PAGE_SIZE).requireData()
+            val catalog = remoteDataSource.getCatalog(
+                page = page,
+                size = AppConstants.Learning.CATALOG_PAGE_SIZE
+            ).requireData()
             wordRepository.upsertRemoteCatalog(catalog.items)
-            if (catalog.items.isEmpty() || catalog.items.size < CATALOG_PAGE_SIZE) break
+            if (catalog.items.isEmpty() || catalog.items.size < AppConstants.Learning.CATALOG_PAGE_SIZE) break
             page++
         }
         catalogLoaded = true
@@ -177,7 +194,7 @@ class LearningRepository @Inject constructor(
         return runCatching {
             while (true) {
                 val pending = withContext(Dispatchers.IO) {
-                    mutationDao.getPending(SYNC_BATCH_SIZE)
+                    mutationDao.getPending(AppConstants.Learning.SYNC_BATCH_SIZE)
                 }
                 if (pending.isEmpty()) return@runCatching
 

@@ -3,6 +3,7 @@ package com.example.wordcrush.ui.viewmodel
 import com.example.wordcrush.data.model.DailyLearningPlan
 import com.example.wordcrush.data.model.ActiveMatchCardSnapshot
 import com.example.wordcrush.data.model.WordItem
+import com.example.wordcrush.constants.AppStrings
 import com.example.wordcrush.ui.model.MatchCardFeedback
 import com.example.wordcrush.ui.model.MatchCardType
 import com.example.wordcrush.ui.model.MatchCardUiModel
@@ -15,32 +16,32 @@ internal data class DailyPlanPresentation(
 internal fun DailyLearningPlan.toPresentation(): DailyPlanPresentation {
     return DailyPlanPresentation(
         title = when {
-            allWordsMastered -> "All words learned"
-            isDailyCompleted -> "Today's words are done"
-            else -> "Today's fixed set"
+            allWordsMastered -> AppStrings.Learning.ALL_WORDS_LEARNED
+            isDailyCompleted -> AppStrings.Learning.DAILY_WORDS_DONE
+            else -> AppStrings.Learning.TODAY_FIXED_SET
         },
         message = when {
-            allWordsMastered -> "You have already learned every word in the word book."
+            allWordsMastered -> AppStrings.Learning.ALL_WORDS_BOOK_COMPLETE
             isDailyCompleted && canIncreaseDailyTarget ->
-                "Today's words are complete. Increase the daily learning count if you want more words today."
-            isDailyCompleted -> "Today's words are complete."
-            todayTotalCount == 0 -> "No study words are available yet."
-            else -> "Today's plan is fixed at $todayTotalCount words. Each word needs 3 correct matches."
+                AppStrings.Learning.DAILY_COMPLETE_INCREASE_HINT
+            isDailyCompleted -> AppStrings.Learning.DAILY_COMPLETE
+            todayTotalCount == 0 -> AppStrings.Learning.NO_STUDY_WORDS
+            else -> AppStrings.Learning.fixedPlan(todayTotalCount)
         }
     )
 }
 
 internal fun DailyLearningPlan.toCompletionMessage(): String {
     return when {
-        allWordsMastered -> "You have already learned all words."
-        canIncreaseDailyTarget -> "Today's words are complete. Increase the daily learning count if you want to continue today."
-        else -> "Today's words are complete."
+        allWordsMastered -> AppStrings.Learning.ALL_WORDS_COMPLETE
+        canIncreaseDailyTarget -> AppStrings.Learning.DAILY_COMPLETE_CONTINUE_HINT
+        else -> AppStrings.Learning.DAILY_COMPLETE
     }
 }
 
 internal fun buildLearnedWordSummaries(words: List<WordItem>): List<String> {
     return words.map { word ->
-        "${word.english} - ${word.chinese.replace("\n", " ").trim()}"
+        AppStrings.chineseSummary(word.english, word.chinese)
     }
 }
 

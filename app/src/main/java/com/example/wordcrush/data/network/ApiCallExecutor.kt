@@ -1,6 +1,7 @@
 package com.example.wordcrush.data.network
 
 import com.example.wordcrush.data.model.ApiResponse
+import com.example.wordcrush.constants.AppStrings
 import com.wordcrush.api.ApiCode
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
@@ -41,18 +42,20 @@ class ApiCallExecutor @Inject constructor(
         }
 
         val body = response.body()
-            ?: throw NetworkException.Serialization(IllegalStateException("Empty response body"))
+            ?: throw NetworkException.Serialization(
+                IllegalStateException(AppStrings.Errors.EMPTY_RESPONSE_BODY)
+            )
         if (!body.isSuccess()) {
             throw NetworkException.Server(
                 httpStatusCode = response.code(),
                 code = body.code,
-                detail = body.msg.ifBlank { "Request failed." }
+                detail = body.msg.ifBlank { AppStrings.Errors.REQUEST_FAILED }
             )
         }
         return ApiPayload(
             code = body.code,
             data = body.data,
-            message = body.msg.ifBlank { "success" }
+            message = body.msg.ifBlank { AppStrings.Errors.SUCCESS }
         )
     }
 
@@ -65,7 +68,7 @@ class ApiCallExecutor @Inject constructor(
         val detail = error?.msg?.takeIf { it.isNotBlank() }
             ?: errorText.takeIf { it.isNotBlank() }
             ?: message().takeIf { it.isNotBlank() }
-            ?: "Request failed."
+            ?: AppStrings.Errors.REQUEST_FAILED
         return NetworkException.Server(code(), responseCode, detail)
     }
 
@@ -75,6 +78,8 @@ class ApiCallExecutor @Inject constructor(
     )
 }
 
-fun <T> ApiPayload<T>.requireData(fallbackMessage: String = "Response data is missing."): T {
+fun <T> ApiPayload<T>.requireData(
+    fallbackMessage: String = AppStrings.Errors.RESPONSE_DATA_MISSING
+): T {
     return data ?: throw IllegalStateException(message.ifBlank { fallbackMessage })
 }

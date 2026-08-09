@@ -1,6 +1,8 @@
 package com.example.wordcrush.ui.model
 
 import com.example.wordcrush.data.model.WordItem
+import com.example.wordcrush.constants.AppConstants
+import com.example.wordcrush.constants.AppStrings
 
 enum class MatchCardType {
     ENGLISH,
@@ -22,17 +24,17 @@ enum class MatchMode(
 ) {
     CLASSIC(
         gameType = 0,
-        title = "Match Challenge",
-        subtitle = "Choose a mode, then start.",
-        emptyTitle = "Ready to start",
-        emptyMessage = "Tap start to load a fresh set of words for classic mode."
+        title = AppStrings.Game.gameTypeName(isClassic = true),
+        subtitle = AppStrings.Game.MODE_SUBTITLE,
+        emptyTitle = AppStrings.Game.READY_TO_START,
+        emptyMessage = AppStrings.Game.CLASSIC_EMPTY_MESSAGE
     ),
     TIMED(
         gameType = 1,
-        title = "Timed Match",
-        subtitle = "Choose a mode, then start.",
-        emptyTitle = "Ready to start",
-        emptyMessage = "The timer begins only after you tap start."
+        title = AppStrings.Game.gameTypeName(isClassic = false),
+        subtitle = AppStrings.Game.MODE_SUBTITLE,
+        emptyTitle = AppStrings.Game.READY_TO_START,
+        emptyMessage = AppStrings.Game.TIMED_EMPTY_MESSAGE
     )
 }
 
@@ -53,7 +55,11 @@ data class MatchRound(
     val nextCursor: Int
 )
 
-internal fun buildMatchRound(words: List<WordItem>, startCursor: Int, pairCount: Int = 6): MatchRound? {
+internal fun buildMatchRound(
+    words: List<WordItem>,
+    startCursor: Int,
+    pairCount: Int = AppConstants.Game.ROUND_PAIR_COUNT
+): MatchRound? {
     if (words.isEmpty()) return null
 
     val selectionCount = minOf(pairCount, words.size)

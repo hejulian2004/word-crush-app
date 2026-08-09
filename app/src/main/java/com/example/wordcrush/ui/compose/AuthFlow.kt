@@ -24,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.wordcrush.constants.AppStrings
 import com.example.wordcrush.ui.viewmodel.LoginAction
 import com.example.wordcrush.ui.viewmodel.LoginEffect
 import com.example.wordcrush.ui.viewmodel.LoginViewModel
@@ -58,7 +59,7 @@ internal fun AuthFlow(
                 onBack = { navController.popBackStack() },
                 onRegisterSuccess = {
                     scope.launch {
-                        snackbarHostState.showSnackbar("Registration complete. Please log in.")
+                        snackbarHostState.showSnackbar(AppStrings.Auth.REGISTRATION_COMPLETE)
                     }
                     navController.popBackStack()
                 },
@@ -93,14 +94,14 @@ private fun LoginRoute(
     }
 
     AuthScreen(
-        title = "Word Crush",
-        subtitle = "Sign in to continue your vocabulary training."
+        title = AppStrings.Auth.APP_NAME,
+        subtitle = AppStrings.Auth.LOGIN_SUBTITLE
     ) {
         OutlinedTextField(
             value = uiState.username,
             onValueChange = { viewModel.onAction(LoginAction.UsernameChanged(it)) },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Username") },
+            label = { Text(AppStrings.Auth.USERNAME) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text,
@@ -112,7 +113,7 @@ private fun LoginRoute(
             value = uiState.password,
             onValueChange = { viewModel.onAction(LoginAction.PasswordChanged(it)) },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Password") },
+            label = { Text(AppStrings.Auth.PASSWORD) },
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(
@@ -132,7 +133,7 @@ private fun LoginRoute(
                 .height(dims.inputHeight),
             enabled = !uiState.isLoading
         ) {
-            Text("Log in")
+            Text(AppStrings.Auth.LOGIN)
         }
         Spacer(modifier = Modifier.height(dims.compactSpacing))
         TextButton(
@@ -140,7 +141,7 @@ private fun LoginRoute(
             modifier = Modifier.align(Alignment.End),
             enabled = !uiState.isLoading
         ) {
-            Text("Create account")
+            Text(AppStrings.Auth.CREATE_ACCOUNT)
         }
     }
 }
@@ -165,14 +166,14 @@ private fun RegisterRoute(
     }
 
     AuthScreen(
-        title = "Create account",
-        subtitle = "A single activity host now drives the full app flow."
+        title = AppStrings.Auth.CREATE_ACCOUNT,
+        subtitle = AppStrings.Auth.REGISTER_SUBTITLE
     ) {
         OutlinedTextField(
             value = uiState.username,
             onValueChange = { viewModel.onAction(RegisterAction.UsernameChanged(it)) },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Username") },
+            label = { Text(AppStrings.Auth.USERNAME) },
             singleLine = true
         )
         Spacer(modifier = Modifier.height(dims.controlSpacing))
@@ -180,7 +181,7 @@ private fun RegisterRoute(
             value = uiState.password,
             onValueChange = { viewModel.onAction(RegisterAction.PasswordChanged(it)) },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Password") },
+            label = { Text(AppStrings.Auth.PASSWORD) },
             singleLine = true,
             visualTransformation = PasswordVisualTransformation()
         )
@@ -189,7 +190,7 @@ private fun RegisterRoute(
             value = uiState.confirmPassword,
             onValueChange = { viewModel.onAction(RegisterAction.ConfirmPasswordChanged(it)) },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Confirm password") },
+            label = { Text(AppStrings.Auth.CONFIRM_PASSWORD) },
             singleLine = true,
             visualTransformation = PasswordVisualTransformation()
         )
@@ -205,7 +206,7 @@ private fun RegisterRoute(
                 .height(dims.inputHeight),
             enabled = !uiState.isLoading
         ) {
-            Text("Register")
+            Text(AppStrings.Auth.REGISTER)
         }
         Spacer(modifier = Modifier.height(dims.compactSpacing))
         TextButton(
@@ -213,7 +214,7 @@ private fun RegisterRoute(
             modifier = Modifier.align(Alignment.End),
             enabled = !uiState.isLoading
         ) {
-            Text("Back")
+            Text(AppStrings.Common.BACK)
         }
     }
 }

@@ -2,6 +2,8 @@ package com.example.wordcrush.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.wordcrush.constants.AppConstants
+import com.example.wordcrush.constants.AppStrings
 import com.example.wordcrush.data.model.WordItem
 import com.example.wordcrush.domain.usecase.SearchWordsUseCase
 import com.example.wordcrush.domain.usecase.UpdateWordMasteryUseCase
@@ -34,10 +36,6 @@ class WordBookViewModel @Inject constructor(
     private val searchWordsUseCase: SearchWordsUseCase,
     private val updateWordMasteryUseCase: UpdateWordMasteryUseCase
 ) : ViewModel() {
-    private companion object {
-        const val PAGE_SIZE = 40
-    }
-
     private var matchingWords: List<WordItem> = emptyList()
     private var searchJob: Job? = null
 
@@ -87,7 +85,7 @@ class WordBookViewModel @Inject constructor(
             runCatching { searchWordsUseCase(query, filter) }
                 .onSuccess { words ->
                     matchingWords = words
-                    val visibleWords = words.take(PAGE_SIZE)
+                    val visibleWords = words.take(AppConstants.WordBook.PAGE_SIZE)
                     updateState {
                         it.copy(
                             isLoading = false,
@@ -102,8 +100,8 @@ class WordBookViewModel @Inject constructor(
                             isLoading = false,
                             words = emptyList(),
                             canLoadMore = false,
-                            emptyStateTitle = "Unable to load words",
-                            emptyStateMessage = error.message ?: "Unable to load words."
+                            emptyStateTitle = AppStrings.Errors.LOAD_WORDS_TITLE,
+                            emptyStateMessage = error.message ?: AppStrings.Errors.LOAD_WORDS_FAILED
                         )
                     }
                 }
@@ -135,7 +133,10 @@ class WordBookViewModel @Inject constructor(
         if (state.isLoading || state.isAppending || !state.canLoadMore) return
         viewModelScope.launch {
             updateState { it.copy(isAppending = true) }
-            val nextCount = minOf(state.words.size + PAGE_SIZE, matchingWords.size)
+            val nextCount = minOf(
+                state.words.size + AppConstants.WordBook.PAGE_SIZE,
+                matchingWords.size
+            )
             updateState {
                 it.copy(
                     words = matchingWords.take(nextCount),
@@ -166,17 +167,20 @@ class WordBookViewModel @Inject constructor(
         val normalizedQuery = query.trim()
         val (title, message) = when {
             normalizedQuery.isNotBlank() && filter == WordFilter.ALL ->
-                "No search results" to "No words match \"$normalizedQuery\". Try another keyword."
+                AppStrings.WordBook.NO_SEARCH_RESULTS to
+                    AppStrings.WordBook.noWordsMatch(normalizedQuery)
             normalizedQuery.isNotBlank() && filter == WordFilter.MASTERED ->
-                "No remembered words found" to "No remembered words match \"$normalizedQuery\"."
+                AppStrings.WordBook.NO_REMEMBERED_WORDS_FOUND to
+                    AppStrings.WordBook.noRememberedMatch(normalizedQuery)
             normalizedQuery.isNotBlank() && filter == WordFilter.UNMASTERED ->
-                "No learning words found" to "No learning words match \"$normalizedQuery\"."
+                AppStrings.WordBook.NO_LEARNING_WORDS_FOUND to
+                    AppStrings.WordBook.noLearningMatch(normalizedQuery)
             filter == WordFilter.MASTERED ->
-                "No remembered words yet" to "Words marked as remembered will appear here."
+                AppStrings.WordBook.NO_REMEMBERED_WORDS_YET to AppStrings.WordBook.rememberedWordsHint()
             filter == WordFilter.UNMASTERED ->
-                "No learning words" to "Your current learning list is empty."
+                AppStrings.WordBook.NO_LEARNING_WORDS to AppStrings.WordBook.learningWordsHint()
             else ->
-                "No words found" to "Your word book is empty right now."
+                AppStrings.WordBook.NO_WORDS_FOUND to AppStrings.WordBook.emptyBookHint()
         }
         return copy(emptyStateTitle = title, emptyStateMessage = message)
     }
@@ -195,6 +199,6 @@ data class WordBookUiState(
     val filter: WordFilter = WordFilter.ALL,
     val words: List<WordItem> = emptyList(),
     val canLoadMore: Boolean = false,
-    val emptyStateTitle: String = "No words found",
-    val emptyStateMessage: String = "Try another keyword or reset the filter."
+    val emptyStateTitle: String = AppStrings.WordBook.NO_WORDS_FOUND,
+    val emptyStateMessage: String = AppStrings.WordBook.TRY_ANOTHER_KEYWORD
 )

@@ -2,6 +2,8 @@
 
 import android.content.Context
 import android.media.MediaPlayer
+import com.example.wordcrush.constants.AppConstants
+import com.example.wordcrush.constants.AppStrings
 import com.example.wordcrush.data.network.ApiPaths
 import com.example.wordcrush.data.network.NetworkConfig
 import com.example.wordcrush.data.network.PublicHttpClient
@@ -27,17 +29,16 @@ class AudioPlayer @Inject constructor(
     @PublicHttpClient
     private val client: OkHttpClient
 ) {
-    private companion object {
-        const val MAX_AUDIO_CACHE_FILES = 30
-        const val AUDIO_CACHE_DIR = "word_pronunciation_cache"
-    }
-
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
     private val cacheMutex = Mutex()
     private val cacheDirectory: File by lazy {
-        File(context.cacheDir, AUDIO_CACHE_DIR).apply { mkdirs() }
+        File(context.cacheDir, AppConstants.Audio.CACHE_DIRECTORY).apply { mkdirs() }
     }
-    private val cachedFiles = LinkedHashMap<String, File>(MAX_AUDIO_CACHE_FILES, 0.75f, true)
+    private val cachedFiles = LinkedHashMap<String, File>(
+        AppConstants.Audio.MAX_CACHE_FILES,
+        0.75f,
+        true
+    )
     private var cacheIndexInitialized = false
     private var mediaPlayer: MediaPlayer? = null
 
@@ -94,8 +95,8 @@ class AudioPlayer @Inject constructor(
     private fun downloadAudioFile(word: String, type: Int, cacheKey: String): File {
         val url = "${NetworkConfig.AUDIO_BASE_URL}${ApiPaths.Audio.PRONUNCIATION}"
             .toHttpUrl().newBuilder()
-            .addQueryParameter("type", type.toString())
-            .addQueryParameter("audio", word)
+            .addQueryParameter(AppConstants.Audio.TYPE_QUERY_PARAMETER, type.toString())
+            .addQueryParameter(AppConstants.Audio.AUDIO_QUERY_PARAMETER, word)
             .build()
         val request = Request.Builder()
             .url(url)
@@ -103,15 +104,22 @@ class AudioPlayer @Inject constructor(
 
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful || response.body == null) {
-                throw IllegalStateException("Unable to load pronunciation audio.")
+                throw IllegalStateException(AppStrings.Errors.AUDIO_LOAD_FAILED)
             }
 
-            val tempFile = File.createTempFile(cacheKey, ".download", cacheDirectory)
+            val tempFile = File.createTempFile(
+                cacheKey,
+                AppConstants.Audio.DOWNLOAD_SUFFIX,
+                cacheDirectory
+            )
             FileOutputStream(tempFile).use { output ->
                 output.write(response.body!!.bytes())
             }
 
-            val targetFile = File(cacheDirectory, "$cacheKey.mp3")
+            val targetFile = File(
+                cacheDirectory,
+                "$cacheKey.${AppConstants.Audio.FILE_EXTENSION}"
+            )
             if (targetFile.exists()) {
                 targetFile.delete()
             }
@@ -129,7 +137,9 @@ class AudioPlayer @Inject constructor(
         }
 
         cacheDirectory.listFiles()
-            ?.filter { it.isFile && it.extension.equals("mp3", ignoreCase = true) }
+            ?.filter {
+                it.isFile && it.extension.equals(AppConstants.Audio.FILE_EXTENSION, ignoreCase = true)
+            }
             ?.sortedBy { it.lastModified() }
             ?.forEach { file ->
                 cachedFiles[file.nameWithoutExtension] = file
@@ -140,7 +150,7 @@ class AudioPlayer @Inject constructor(
 
     private fun trimCacheLocked() {
         val iterator = cachedFiles.entries.iterator()
-        while (cachedFiles.size > MAX_AUDIO_CACHE_FILES && iterator.hasNext()) {
+        while (cachedFiles.size > AppConstants.Audio.MAX_CACHE_FILES && iterator.hasNext()) {
             val eldest = iterator.next()
             if (eldest.value.exists()) {
                 eldest.value.delete()
@@ -155,10 +165,12 @@ class AudioPlayer @Inject constructor(
 
     private fun buildCacheKey(word: String, type: Int): String {
         val normalized = "${type}:${word.trim().lowercase(Locale.US)}"
-        val digest = MessageDigest.getInstance("SHA-256")
+        val digest = MessageDigest.getInstance(AppConstants.Audio.DIGEST_ALGORITHM)
             .digest(normalized.toByteArray())
-            .joinToString(separator = "") { byte -> "%02x".format(byte) }
-        return "audio_$digest"
+            .joinToString(separator = "") { byte ->
+                AppConstants.Audio.DIGEST_BYTE_FORMAT.format(byte)
+            }
+        return AppConstants.Audio.CACHE_KEY_PREFIX + digest
     }
 
     fun release() {

@@ -1,10 +1,12 @@
 package com.example.wordcrush.data.model
 
+import com.example.wordcrush.constants.AppConstants
+
 data class ActiveGameSession(
     val gameType: Int,
     val score: Int,
     val learnedWords: List<String>,
-    val hearts: Int = 5,
+    val hearts: Int = AppConstants.Game.MAX_HEARTS,
     val cards: List<ActiveMatchCardSnapshot> = emptyList(),
     val roundWordIds: List<Int> = emptyList(),
     val cursor: Int = 0,

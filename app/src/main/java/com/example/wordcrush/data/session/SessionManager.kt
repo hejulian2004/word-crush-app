@@ -1,5 +1,6 @@
 package com.example.wordcrush.data.session
 
+import com.example.wordcrush.constants.AppStrings
 import com.example.wordcrush.data.local.PreferenceManager
 import com.example.wordcrush.data.model.UserResponse
 import kotlinx.coroutines.CoroutineScope
@@ -105,7 +106,7 @@ class SessionManager @Inject constructor(
         clearMemory()
     }
 
-    fun invalidateFromNetwork(message: String = "Session expired. Please log in again.") {
+    fun invalidateFromNetwork(message: String = AppStrings.Errors.SESSION_EXPIRED) {
         val hadSession = synchronized(this) {
             if (_session.value == null && _isLoggedIn.value.not()) {
                 false

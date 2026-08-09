@@ -1,6 +1,8 @@
 package com.example.wordcrush.domain.usecase
 
 import android.net.Uri
+import com.example.wordcrush.constants.AppConstants
+import com.example.wordcrush.constants.AppStrings
 import com.example.wordcrush.data.repository.AccountRepository
 import com.example.wordcrush.data.session.SessionManager
 import javax.inject.Inject
@@ -19,7 +21,9 @@ class LoginUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(username: String, password: String): Result<String> {
         if (username.isBlank() || password.isBlank()) {
-            return Result.failure(IllegalArgumentException("Username and password are required."))
+            return Result.failure(
+                IllegalArgumentException(AppStrings.Validation.USERNAME_AND_PASSWORD_REQUIRED)
+            )
         }
         return accountRepository.login(username.trim(), password.trim())
     }
@@ -30,13 +34,19 @@ class RegisterUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(username: String, password: String, confirmPassword: String): Result<String> {
         when {
-            username.isBlank() -> return Result.failure(IllegalArgumentException("Username is required."))
+            username.isBlank() -> return Result.failure(
+                IllegalArgumentException(AppStrings.Validation.USERNAME_REQUIRED)
+            )
             password.isBlank() || confirmPassword.isBlank() ->
-                return Result.failure(IllegalArgumentException("Password is required."))
+                return Result.failure(IllegalArgumentException(AppStrings.Validation.PASSWORD_REQUIRED))
             password != confirmPassword ->
-                return Result.failure(IllegalArgumentException("Passwords do not match."))
-            password.length < 6 ->
-                return Result.failure(IllegalArgumentException("Password must be at least 6 characters."))
+                return Result.failure(
+                    IllegalArgumentException(AppStrings.Validation.PASSWORDS_DO_NOT_MATCH)
+                )
+            password.length < AppConstants.Auth.MIN_PASSWORD_LENGTH ->
+                return Result.failure(
+                    IllegalArgumentException(AppStrings.Validation.PASSWORD_MIN_LENGTH)
+                )
         }
         return accountRepository.register(username.trim(), password.trim())
     }
@@ -87,16 +97,22 @@ class ChangePasswordUseCase @Inject constructor(
     ): Result<String> {
         when {
             oldPassword.isBlank() || newPassword.isBlank() || confirmPassword.isBlank() ->
-                return Result.failure(IllegalArgumentException("Please fill in all password fields."))
+                return Result.failure(
+                    IllegalArgumentException(AppStrings.Validation.PASSWORD_FIELDS_REQUIRED)
+                )
             newPassword != confirmPassword ->
-                return Result.failure(IllegalArgumentException("New passwords do not match."))
-            newPassword.length < 6 ->
-                return Result.failure(IllegalArgumentException("New password must be at least 6 characters."))
+                return Result.failure(
+                    IllegalArgumentException(AppStrings.Validation.NEW_PASSWORDS_DO_NOT_MATCH)
+                )
+            newPassword.length < AppConstants.Auth.MIN_PASSWORD_LENGTH ->
+                return Result.failure(
+                    IllegalArgumentException(AppStrings.Validation.NEW_PASSWORD_MIN_LENGTH)
+                )
         }
 
         val username = sessionManager.currentUsername.orEmpty()
         if (username.isBlank()) {
-            return Result.failure(IllegalStateException("No logged-in user found."))
+            return Result.failure(IllegalStateException(AppStrings.Errors.NO_LOGGED_IN_USER))
         }
         return accountRepository.changePassword(username, oldPassword, newPassword)
     }
@@ -109,7 +125,7 @@ class UploadAvatarUseCase @Inject constructor(
     suspend operator fun invoke(uri: Uri): Result<String> {
         val username = sessionManager.currentUsername.orEmpty()
         if (username.isBlank()) {
-            return Result.failure(IllegalStateException("No logged-in user found."))
+            return Result.failure(IllegalStateException(AppStrings.Errors.NO_LOGGED_IN_USER))
         }
         return accountRepository.uploadAvatar(username, uri)
     }

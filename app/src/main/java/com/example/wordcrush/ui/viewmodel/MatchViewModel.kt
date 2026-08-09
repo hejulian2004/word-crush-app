@@ -2,6 +2,8 @@ package com.example.wordcrush.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.wordcrush.constants.AppConstants
+import com.example.wordcrush.constants.AppStrings
 import com.example.wordcrush.data.model.ActiveGameSession
 import com.example.wordcrush.data.model.DailyLearningPlan
 import com.example.wordcrush.data.model.RecordWordProgress
@@ -58,17 +60,17 @@ data class MatchSessionUiState(
     val isLoading: Boolean = true,
     val avatarUrl: String = "",
     val score: Int = 0,
-    val hearts: Int = 5,
-    val remainingSeconds: Int = 180,
+    val hearts: Int = AppConstants.Game.MAX_HEARTS,
+    val remainingSeconds: Int = AppConstants.Game.DEFAULT_DURATION_SECONDS,
     val hasStarted: Boolean = false,
     val gameVisible: Boolean = false,
     val isResolvingPair: Boolean = false,
     val cards: List<MatchCardUiModel> = emptyList(),
-    val dailyTarget: Int = DEFAULT_DAILY_WORD_TARGET,
+    val dailyTarget: Int = AppConstants.Learning.DEFAULT_DAILY_WORD_TARGET,
     val todayWordCount: Int = 0,
     val masteredTodayCount: Int = 0,
-    val statusTitle: String = "Ready to start",
-    val statusMessage: String = "Tap start to load today's study words.",
+    val statusTitle: String = AppStrings.Game.READY_TO_START,
+    val statusMessage: String = AppStrings.Game.DAILY_STUDY_MESSAGE,
     val latestMatchedWord: WordItem? = null,
     val gameOverMessage: String? = null,
     val gameOverScore: Int? = null,
@@ -266,7 +268,7 @@ class MatchViewModel @Inject constructor(
         runtime.engine = MatchGameState(
             score = session.score,
             hearts = session.hearts,
-            remainingSeconds = session.remainingSeconds ?: 180,
+            remainingSeconds = session.remainingSeconds ?: AppConstants.Game.DEFAULT_DURATION_SECONDS,
             hasStarted = session.hasStarted,
             gameVisible = session.gameVisible,
             cards = session.cards.map { it.toUiModel() },
@@ -278,7 +280,7 @@ class MatchViewModel @Inject constructor(
 
         if (mode == MatchMode.TIMED && session.gameVisible && session.hasStarted) {
             if (runtime.timerEndElapsedRealtime <= android.os.SystemClock.elapsedRealtime()) {
-                finishGame(mode, "Time is up.")
+                finishGame(mode, AppStrings.Game.TIME_IS_UP)
             } else {
                 startTimer(mode)
             }
@@ -298,21 +300,24 @@ class MatchViewModel @Inject constructor(
             runtime.words = plan.activeWords
             updatePlanSummary(mode, plan)
             if (plan.allWordsMastered || plan.activeWords.isEmpty()) {
-                runtime.engine = MatchGameState(remainingSeconds = 180)
+                runtime.engine = MatchGameState(
+                    remainingSeconds = AppConstants.Game.DEFAULT_DURATION_SECONDS
+                )
                 syncEngineToUi(mode)
                 emitEffect(MatchEffect.ShowMessage(plan.toCompletionMessage()))
                 return@launch
             }
 
             runtime.engine = MatchGameState(
-                remainingSeconds = 180,
+                remainingSeconds = AppConstants.Game.DEFAULT_DURATION_SECONDS,
                 hasStarted = true,
                 gameVisible = true
             )
             syncEngineToUi(mode)
             if (mode == MatchMode.TIMED) {
                 runtime.timerEndElapsedRealtime =
-                    android.os.SystemClock.elapsedRealtime() + 180_000L
+                    android.os.SystemClock.elapsedRealtime() +
+                        AppConstants.Game.DEFAULT_DURATION_SECONDS * 1_000L
             }
             startNextRound(mode)
             if (mode == MatchMode.TIMED) startTimer(mode)
@@ -420,11 +425,20 @@ class MatchViewModel @Inject constructor(
             val result = saveGameRecordUseCase(mode.gameType, score, learned)
             val message = result.getOrNull()?.let { saveResult ->
                 if (saveResult.syncedToCloud) {
-                    "Current ${if (mode == MatchMode.CLASSIC) "classic" else "timed"} game has been saved and synced to cloud."
+                    AppStrings.Game.saved(
+                        AppStrings.Game.modeName(mode == MatchMode.CLASSIC),
+                        synced = true
+                    )
                 } else {
-                    "Current ${if (mode == MatchMode.CLASSIC) "classic" else "timed"} game is saved locally. Cloud upload failed."
+                    AppStrings.Game.saved(
+                        AppStrings.Game.modeName(mode == MatchMode.CLASSIC),
+                        synced = false
+                    )
                 }
-            } ?: "Current ${if (mode == MatchMode.CLASSIC) "classic" else "timed"} game is saved locally. Cloud upload failed."
+            } ?: AppStrings.Game.saved(
+                AppStrings.Game.modeName(mode == MatchMode.CLASSIC),
+                synced = false
+            )
             emitEffect(MatchEffect.ShowMessage(message))
         }
     }
@@ -435,7 +449,7 @@ class MatchViewModel @Inject constructor(
         runtime.learnedWordDetails.clear()
         runtime.roundWords = emptyMap()
         runtime.engine = MatchGameState(
-            remainingSeconds = 180
+            remainingSeconds = AppConstants.Game.DEFAULT_DURATION_SECONDS
         )
         syncEngineToUi(mode)
         updateSession(mode) { it.copy(learnedWordSummaries = summaries) }
@@ -475,7 +489,7 @@ class MatchViewModel @Inject constructor(
             updatePlanSummary(mode, getDailyLearningPlanUseCase())
             syncEngineToUi(mode)
             persistSession(mode)
-            emitEffect(MatchEffect.ShowMessage("${latestWord.english} marked as learning again."))
+            emitEffect(MatchEffect.ShowMessage(AppStrings.Game.markedAsLearning(latestWord.english)))
         }
     }
 
@@ -516,7 +530,8 @@ class MatchViewModel @Inject constructor(
         updatedWord: WordItem?
     ) {
         val previous = runtime.recordWordProgress[matchedWord.english]
-        val nextCorrectCount = ((previous?.correctCount ?: 0) + 1).coerceAtMost(3)
+        val nextCorrectCount = ((previous?.correctCount ?: 0) + 1)
+            .coerceAtMost(AppConstants.Learning.REQUIRED_CORRECT_MATCHES)
         runtime.recordWordProgress[matchedWord.english] = RecordWordProgress(
             english = matchedWord.english,
             correctCount = nextCorrectCount,
@@ -527,7 +542,9 @@ class MatchViewModel @Inject constructor(
     private fun downgradeRecordedWordProgress(runtime: GameRuntime, word: WordItem) {
         val current = runtime.recordWordProgress[word.english] ?: return
         runtime.recordWordProgress[word.english] = current.copy(
-            correctCount = current.correctCount.coerceAtMost(2).coerceAtLeast(1),
+            correctCount = current.correctCount
+                .coerceAtMost(AppConstants.Learning.REQUIRED_CORRECT_MATCHES - 1)
+                .coerceAtLeast(1),
             isLearned = false
         )
     }

@@ -1,19 +1,20 @@
 ﻿package com.example.wordcrush.data.cache
 
 import com.example.wordcrush.data.network.NetworkConfig
+import com.example.wordcrush.constants.AppConstants
 import com.example.wordcrush.utils.AvatarUrlFactory
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class AvatarCacheStore @Inject constructor() {
-    private companion object {
-        const val MAX_CACHED_USERS = 50
-    }
-
-    private val entries = object : LinkedHashMap<String, CachedAvatar>(MAX_CACHED_USERS, 0.75f, true) {
+    private val entries = object : LinkedHashMap<String, CachedAvatar>(
+        AppConstants.Cache.MAX_CACHED_USERS,
+        0.75f,
+        true
+    ) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CachedAvatar>?): Boolean {
-            return size > MAX_CACHED_USERS
+            return size > AppConstants.Cache.MAX_CACHED_USERS
         }
     }
 

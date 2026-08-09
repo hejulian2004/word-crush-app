@@ -2,6 +2,7 @@ package com.example.wordcrush.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.wordcrush.constants.AppStrings
 import com.example.wordcrush.data.model.GameRecordItem
 import com.example.wordcrush.domain.usecase.DeleteGameRecordUseCase
 import com.example.wordcrush.domain.usecase.GetGameRecordsUseCase
@@ -71,11 +72,11 @@ class GameRecordViewModel @Inject constructor(
                     updateState {
                         it.copy(
                             isLoading = false,
-                            error = error.message ?: "Unable to load game records."
+                            error = error.message ?: AppStrings.Errors.LOAD_RECORDS_FAILED
                         )
                     }
                     emitEffect(GameRecordEffect.ShowMessage(
-                        error.message ?: "Unable to load game records."
+                        error.message ?: AppStrings.Errors.LOAD_RECORDS_FAILED
                     ))
                 }
         }
@@ -88,13 +89,13 @@ class GameRecordViewModel @Inject constructor(
             deleteGameRecordUseCase(record)
                 .onSuccess {
                     updateState { it.copy(isDeleting = false) }
-                    emitEffect(GameRecordEffect.ShowMessage("Record deleted."))
+                    emitEffect(GameRecordEffect.ShowMessage(AppStrings.Errors.RECORD_DELETED))
                     load()
                 }
                 .onFailure { error ->
                     updateState { it.copy(isDeleting = false) }
                     emitEffect(GameRecordEffect.ShowMessage(
-                        error.message ?: "Unable to delete record."
+                        error.message ?: AppStrings.Errors.DELETE_RECORD_FAILED
                     ))
                 }
         }

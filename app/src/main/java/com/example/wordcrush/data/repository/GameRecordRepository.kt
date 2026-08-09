@@ -3,6 +3,8 @@ package com.example.wordcrush.data.repository
 import com.example.wordcrush.Database.GameRecord.GameRecordDao
 import com.example.wordcrush.Database.GameRecord.GameRecordEntity
 import com.example.wordcrush.data.cache.AvatarCacheStore
+import com.example.wordcrush.constants.AppConstants
+import com.example.wordcrush.constants.AppStrings
 import com.example.wordcrush.data.remote.GameRecordRemoteDataSource
 import com.example.wordcrush.data.session.SessionManager
 import com.example.wordcrush.data.model.DeleteGameRecordRequest
@@ -29,14 +31,17 @@ class GameRecordRepository @Inject constructor(
     private val sessionManager: SessionManager,
     private val avatarCacheStore: AvatarCacheStore
 ) {
-    private companion object {
-        const val MAX_RANKING_CACHE_ENTRIES = 6
-        val GAME_TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH:mm:ss.SSS")
-    }
+    private val gameTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern(
+        AppConstants.Records.TIME_FORMAT
+    )
 
-    private val rankingCache = object : LinkedHashMap<String, RankingCacheEntry>(MAX_RANKING_CACHE_ENTRIES, 0.75f, true) {
+    private val rankingCache = object : LinkedHashMap<String, RankingCacheEntry>(
+        AppConstants.Cache.MAX_RANKING_CACHE_ENTRIES,
+        0.75f,
+        true
+    ) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, RankingCacheEntry>?): Boolean {
-            return size > MAX_RANKING_CACHE_ENTRIES
+            return size > AppConstants.Cache.MAX_RANKING_CACHE_ENTRIES
         }
     }
 
@@ -46,8 +51,8 @@ class GameRecordRepository @Inject constructor(
         learnedWords: List<String>
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
-            val username = currentUsername() ?: throw IllegalStateException("No logged-in user found.")
-            val time = LocalDateTime.now().format(GAME_TIME_FORMATTER)
+            val username = currentUsername() ?: throw IllegalStateException(AppStrings.Errors.NO_LOGGED_IN_USER)
+            val time = LocalDateTime.now().format(gameTimeFormatter)
             gameRecordDao.insertGameRecord(
                 buildLocalEntity(
                     username = username,
@@ -112,8 +117,8 @@ class GameRecordRepository @Inject constructor(
         learnedWords: List<String>
     ): Result<SaveRecordResult> = withContext(Dispatchers.IO) {
         runCatching {
-            val username = currentUsername() ?: throw IllegalStateException("No logged-in user found.")
-            val time = LocalDateTime.now().format(GAME_TIME_FORMATTER)
+            val username = currentUsername() ?: throw IllegalStateException(AppStrings.Errors.NO_LOGGED_IN_USER)
+            val time = LocalDateTime.now().format(gameTimeFormatter)
             val entity = buildLocalEntity(
                 username = username,
                 gameType = gameType,
@@ -139,7 +144,7 @@ class GameRecordRepository @Inject constructor(
 
     suspend fun deleteRecord(record: GameRecordItem): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
-            val username = currentUsername() ?: throw IllegalStateException("No logged-in user found.")
+            val username = currentUsername() ?: throw IllegalStateException(AppStrings.Errors.NO_LOGGED_IN_USER)
             val deleted = gameRecordDao.deleteRecordByGameTypeScoreTime(
                 username,
                 record.gameType,
@@ -147,7 +152,7 @@ class GameRecordRepository @Inject constructor(
                 record.time
             )
             if (deleted <= 0) {
-                throw IllegalStateException("Record was not found.")
+                throw IllegalStateException(AppStrings.Errors.RECORD_NOT_FOUND)
             }
 
             remoteDataSource.deleteGameRecord(
@@ -164,7 +169,7 @@ class GameRecordRepository @Inject constructor(
 
     suspend fun syncFromCloud(): Result<CloudSyncResult> = withContext(Dispatchers.IO) {
         runCatching {
-            val username = currentUsername() ?: throw IllegalStateException("No logged-in user found.")
+            val username = currentUsername() ?: throw IllegalStateException(AppStrings.Errors.NO_LOGGED_IN_USER)
             val localEntities = gameRecordDao.getAllGameRecords(username)
             var remoteEntities = fetchRemoteEntities(username)
             val remoteSnapshots = remoteEntities.toSnapshots().toSet()
@@ -175,7 +180,7 @@ class GameRecordRepository @Inject constructor(
             var uploadedCount = 0
             missingLocalEntities.forEach { entity ->
                 if (!uploadRecordToCloud(entity.toSaveRequest())) {
-                    throw IllegalStateException("Cloud sync failed while uploading local records.")
+                    throw IllegalStateException(AppStrings.Errors.CLOUD_RECORD_SYNC_FAILED)
                 }
                 uploadedCount++
             }
@@ -234,7 +239,7 @@ class GameRecordRepository @Inject constructor(
     }
 
     private fun List<RemoteRankingItem>.toSignature(): String {
-        return joinToString(separator = "|") { item ->
+        return joinToString(separator = AppConstants.Records.SNAPSHOT_SEPARATOR) { item ->
             "${item.username}:${item.score}:${item.time}:${item.avatarVersion}"
         }
     }
@@ -284,7 +289,13 @@ private fun List<GameRecordEntity>.toSnapshots(): List<RecordSnapshot> {
     return map { entity ->
         entity.toSnapshot()
     }.sortedBy { snapshot ->
-        "${snapshot.username}|${snapshot.gameType}|${snapshot.score}|${snapshot.time}|${snapshot.learnedWords.joinToString(",")}"
+        listOf(
+            snapshot.username,
+            snapshot.gameType,
+            snapshot.score,
+            snapshot.time,
+            snapshot.learnedWords.joinToString(AppConstants.Records.WORDS_SEPARATOR)
+        ).joinToString(AppConstants.Records.SNAPSHOT_SEPARATOR)
     }
 }
 

@@ -1,5 +1,6 @@
 package com.example.wordcrush.data.network
 
+import com.example.wordcrush.constants.AppStrings
 import java.io.IOException
 
 sealed class NetworkException(
@@ -12,11 +13,11 @@ sealed class NetworkException(
         val detail: String
     ) : NetworkException(detail)
 
-    data object Offline : NetworkException("Network connection is unavailable.")
+    data object Offline : NetworkException(AppStrings.Errors.NETWORK_OFFLINE)
 
-    data object Timeout : NetworkException("Network request timed out.")
+    data object Timeout : NetworkException(AppStrings.Errors.NETWORK_TIMEOUT)
 
     data class Serialization(
         val original: Throwable
-    ) : NetworkException("Unable to read server response.", original)
+    ) : NetworkException(AppStrings.Errors.NETWORK_SERIALIZATION, original)
 }

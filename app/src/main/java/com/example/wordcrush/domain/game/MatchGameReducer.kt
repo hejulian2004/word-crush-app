@@ -2,12 +2,14 @@ package com.example.wordcrush.domain.game
 
 import com.example.wordcrush.ui.model.MatchCardFeedback
 import com.example.wordcrush.ui.model.MatchCardUiModel
+import com.example.wordcrush.constants.AppConstants
+import com.example.wordcrush.constants.AppStrings
 
 /** State owned by the pure interaction reducer for one game mode. */
 data class MatchGameState(
     val score: Int = 0,
-    val hearts: Int = 5,
-    val remainingSeconds: Int = 180,
+    val hearts: Int = AppConstants.Game.MAX_HEARTS,
+    val remainingSeconds: Int = AppConstants.Game.DEFAULT_DURATION_SECONDS,
     val hasStarted: Boolean = false,
     val gameVisible: Boolean = false,
     val isResolvingPair: Boolean = false,
@@ -91,8 +93,8 @@ object MatchGameReducer {
                 feedback = MatchCardFeedback.MATCHED
             )
             val newScore = state.score + 1
-            val newHearts = if (newScore % 6 == 0) {
-                minOf(5, state.hearts + 1)
+            val newHearts = if (newScore % AppConstants.Game.SCORE_HEART_REWARD_INTERVAL == 0) {
+                minOf(AppConstants.Game.MAX_HEARTS, state.hearts + 1)
             } else {
                 state.hearts
             }
@@ -156,7 +158,7 @@ object MatchGameReducer {
 
     private fun resolveMismatch(state: MatchGameState): MatchGameReduction {
         return if (state.hearts <= 0) {
-            finish(state, "Game over.")
+            finish(state, AppStrings.Game.GAME_OVER)
         } else {
             MatchGameReduction(
                 state.copy(
@@ -178,7 +180,7 @@ object MatchGameReducer {
         }
         return finish(
             state.copy(remainingSeconds = 0),
-            "Time is up."
+            AppStrings.Game.TIME_IS_UP
         )
     }
 

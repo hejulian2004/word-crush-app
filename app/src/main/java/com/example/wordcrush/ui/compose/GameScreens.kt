@@ -46,7 +46,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -62,6 +61,13 @@ import com.example.wordcrush.ui.viewmodel.MatchAction
 import com.example.wordcrush.ui.viewmodel.MatchEffect
 import com.example.wordcrush.ui.viewmodel.MatchSessionUiState
 import com.example.wordcrush.ui.viewmodel.MatchViewModel
+import com.example.wordcrush.constants.AppStrings
+import com.example.wordcrush.constants.AppConstants
+import com.example.wordcrush.ui.compose.theme.WordCrushMatchChineseSelected
+import com.example.wordcrush.ui.compose.theme.WordCrushMatchEnglishSelected
+import com.example.wordcrush.ui.compose.theme.WordCrushMatchSelectedBorder
+import com.example.wordcrush.ui.compose.theme.WordCrushMatchSelectedContent
+import com.example.wordcrush.ui.compose.theme.matchCardFlashColor
 
 @Composable
 internal fun MatchRoute(
@@ -93,16 +99,18 @@ internal fun MatchRoute(
         showStats = isCurrentGameStarted,
         score = activeUiState.score,
         hearts = activeUiState.hearts,
-        extra = if (selectedMode == MatchMode.TIMED) "${activeUiState.remainingSeconds}s" else null,
+        extra = if (selectedMode == MatchMode.TIMED) {
+            AppStrings.Game.timer(activeUiState.remainingSeconds)
+        } else null,
         onPrimaryAction = { viewModel.onAction(MatchAction.StartOrRestart) },
         primaryActionLabel = when (selectedMode) {
-            MatchMode.CLASSIC -> if (activeUiState.hasStarted) "Restart" else "Start"
-            MatchMode.TIMED -> if (activeUiState.hasStarted) "Restart" else "Start"
+            MatchMode.CLASSIC -> if (activeUiState.hasStarted) AppStrings.Common.RESTART else AppStrings.Common.START
+            MatchMode.TIMED -> if (activeUiState.hasStarted) AppStrings.Common.RESTART else AppStrings.Common.START
         },
         onStopAction = { viewModel.onAction(MatchAction.RequestStop) },
         stopVisible = isCurrentGameStarted,
         onSecondaryAction = { viewModel.onAction(MatchAction.OpenRanking) },
-        secondaryActionLabel = "Ranking",
+        secondaryActionLabel = AppStrings.Common.RANKING,
         topControls = {
             if (!isCurrentGameStarted) {
                 Row(
@@ -118,7 +126,7 @@ internal fun MatchRoute(
                                     .weight(1f)
                                     .height(dims.buttonHeight)
                             ) {
-                                Text(if (mode == MatchMode.CLASSIC) "Classic" else "Timed")
+                                Text(if (mode == MatchMode.CLASSIC) AppStrings.Game.CLASSIC else AppStrings.Game.TIMED)
                             }
                         } else {
                             OutlinedButton(
@@ -127,7 +135,7 @@ internal fun MatchRoute(
                                     .weight(1f)
                                     .height(dims.buttonHeight)
                             ) {
-                                Text(if (mode == MatchMode.CLASSIC) "Classic" else "Timed")
+                                Text(if (mode == MatchMode.CLASSIC) AppStrings.Game.CLASSIC else AppStrings.Game.TIMED)
                             }
                         }
                     }
@@ -150,9 +158,15 @@ internal fun MatchRoute(
                     ) {
                         Text(
                             text = if (selectedMode == MatchMode.CLASSIC) {
-                                "Today: ${activeUiState.masteredTodayCount}/${activeUiState.todayWordCount}"
+                                AppStrings.Game.todayProgress(
+                                    activeUiState.masteredTodayCount,
+                                    activeUiState.todayWordCount
+                                )
                             } else {
-                                "Today: ${activeUiState.masteredTodayCount}/${activeUiState.todayWordCount}"
+                                AppStrings.Game.todayProgress(
+                                    activeUiState.masteredTodayCount,
+                                    activeUiState.todayWordCount
+                                )
                             },
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
@@ -182,12 +196,12 @@ internal fun MatchRoute(
             MatchMode.CLASSIC -> {
                 if (!activeUiState.hasStarted || !activeUiState.gameVisible) {
                     EmptyStateCard(
-                        title = if (activeUiState.statusTitle == "Today's fixed set") {
+                        title = if (activeUiState.statusTitle == AppStrings.Learning.TODAY_FIXED_SET) {
                             selectedMode.emptyTitle
                         } else {
                             activeUiState.statusTitle
                         },
-                        message = if (activeUiState.statusTitle == "Today's fixed set") {
+                        message = if (activeUiState.statusTitle == AppStrings.Learning.TODAY_FIXED_SET) {
                             selectedMode.emptyMessage
                         } else {
                             activeUiState.statusMessage
@@ -204,12 +218,12 @@ internal fun MatchRoute(
             MatchMode.TIMED -> {
                 if (!activeUiState.hasStarted || !activeUiState.gameVisible) {
                     EmptyStateCard(
-                        title = if (activeUiState.statusTitle == "Today's fixed set") {
+                        title = if (activeUiState.statusTitle == AppStrings.Learning.TODAY_FIXED_SET) {
                             selectedMode.emptyTitle
                         } else {
                             activeUiState.statusTitle
                         },
-                        message = if (activeUiState.statusTitle == "Today's fixed set") {
+                        message = if (activeUiState.statusTitle == AppStrings.Learning.TODAY_FIXED_SET) {
                             selectedMode.emptyMessage
                         } else {
                             activeUiState.statusMessage
@@ -231,21 +245,21 @@ internal fun MatchRoute(
             onDismissRequest = {
                 viewModel.onAction(MatchAction.ClearGameOver)
             },
-            title = { Text("Round complete") },
-            text = { Text("${activeUiState.gameOverMessage}\nScore: ${activeUiState.gameOverScore}") },
+            title = { Text(AppStrings.Game.ROUND_COMPLETE) },
+            text = { Text(AppStrings.scoreSummary(activeUiState.gameOverMessage, activeUiState.gameOverScore)) },
             confirmButton = {
                 Button(onClick = {
                     viewModel.onAction(MatchAction.ClearGameOver)
                     viewModel.onAction(MatchAction.StartOrRestart)
                 }) {
-                    Text("Play again")
+                    Text(AppStrings.Common.PLAY_AGAIN)
                 }
             },
             dismissButton = {
                 TextButton(onClick = {
                     viewModel.onAction(MatchAction.ClearGameOver)
                 }) {
-                    Text("Close")
+                    Text(AppStrings.Common.CLOSE)
                 }
             }
         )
@@ -256,21 +270,21 @@ internal fun MatchRoute(
             onDismissRequest = {
                 viewModel.onAction(MatchAction.ClearGameOver)
             },
-            title = { Text("Time's up") },
-            text = { Text("${activeUiState.gameOverMessage}\nScore: ${activeUiState.gameOverScore}") },
+            title = { Text(AppStrings.Game.TIMES_UP) },
+            text = { Text(AppStrings.scoreSummary(activeUiState.gameOverMessage, activeUiState.gameOverScore)) },
             confirmButton = {
                 Button(onClick = {
                     viewModel.onAction(MatchAction.ClearGameOver)
                     viewModel.onAction(MatchAction.StartOrRestart)
                 }) {
-                    Text("Play again")
+                    Text(AppStrings.Common.PLAY_AGAIN)
                 }
             },
             dismissButton = {
                 TextButton(onClick = {
                     viewModel.onAction(MatchAction.ClearGameOver)
                 }) {
-                    Text("Close")
+                    Text(AppStrings.Common.CLOSE)
                 }
             }
         )
@@ -279,18 +293,18 @@ internal fun MatchRoute(
     if (uiState.showStopConfirmDialog) {
         AlertDialog(
             onDismissRequest = { viewModel.onAction(MatchAction.DismissStop) },
-            title = { Text("End current game?") },
-            text = { Text("Stopping now will save the current game record and end this round.") },
+            title = { Text(AppStrings.Game.END_CURRENT_GAME) },
+            text = { Text(AppStrings.Game.STOPPING_GAME_MESSAGE) },
             confirmButton = {
                 Button(onClick = {
                     viewModel.onAction(MatchAction.ConfirmStop)
                 }) {
-                    Text("Stop")
+                    Text(AppStrings.Game.STOP)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.onAction(MatchAction.DismissStop) }) {
-                    Text("Cancel")
+                    Text(AppStrings.Common.CANCEL)
                 }
             }
         )
@@ -338,7 +352,7 @@ private fun MatchGameScaffold(
                 horizontalArrangement = Arrangement.spacedBy(dims.controlSpacing)
             ) {
                 StatCard(
-                    "Score",
+                    AppStrings.Common.SCORE,
                     score.toString(),
                     Modifier
                         .weight(1f)
@@ -360,14 +374,14 @@ private fun MatchGameScaffold(
                     horizontalArrangement = Arrangement.spacedBy(dims.controlSpacing)
                 ) {
                     StatCard(
-                        "Score",
+                        AppStrings.Common.SCORE,
                         score.toString(),
                         Modifier
                             .weight(1f)
                             .fillMaxHeight()
                     )
                     StatCard(
-                        "Timer",
+                        AppStrings.Common.TIMER,
                         extra ?: "",
                         Modifier
                             .weight(1f)
@@ -416,7 +430,7 @@ private fun LatestMatchedWordCard(
         ) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(dims.tinySpacing)) {
                 Text(
-                    text = "Latest pair",
+                    text = AppStrings.Game.LATEST_PAIR,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -434,7 +448,7 @@ private fun LatestMatchedWordCard(
                 )
             }
             androidx.compose.material3.OutlinedButton(onClick = onMarkUnremembered) {
-                Text("Not remembered")
+                Text(AppStrings.Game.NOT_REMEMBERED)
             }
         }
     }
@@ -460,11 +474,11 @@ private fun LearnedWordsSummaryCard(
             verticalArrangement = Arrangement.spacedBy(dims.compactSpacing)
         ) {
             Text(
-                text = "Learned this round",
+                text = AppStrings.Game.LEARNED_THIS_ROUND,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
-            summaries.take(6).forEach { summary ->
+            summaries.take(AppConstants.Game.MAX_LEARNED_SUMMARIES).forEach { summary ->
                 Text(
                     text = summary,
                     style = MaterialTheme.typography.bodySmall,
@@ -473,9 +487,11 @@ private fun LearnedWordsSummaryCard(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            if (summaries.size > 6) {
+            if (summaries.size > AppConstants.Game.MAX_LEARNED_SUMMARIES) {
                 Text(
-                    text = "+${summaries.size - 6} more",
+                    text = AppStrings.Game.moreSummaries(
+                        summaries.size - AppConstants.Game.MAX_LEARNED_SUMMARIES
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -513,7 +529,7 @@ private fun GameActionRow(
                     .weight(1f)
                     .height(dims.inputHeight)
             ) {
-                Text("Stop")
+                Text(AppStrings.Game.STOP)
             }
         }
         androidx.compose.material3.FilledTonalButton(
@@ -547,12 +563,12 @@ private fun LivesStatCard(
             verticalArrangement = Arrangement.spacedBy(dims.compactSpacing)
         ) {
             Text(
-                text = "Lives",
+                text = AppStrings.Game.LIVES,
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Row(horizontalArrangement = Arrangement.spacedBy(dims.scaled(6.dp))) {
-                repeat(5) { index ->
+                repeat(AppConstants.Game.MAX_HEARTS) { index ->
                     Image(
                         painter = painterResource(
                             id = if (index < hearts) {
@@ -561,7 +577,11 @@ private fun LivesStatCard(
                                 R.drawable.icon_white_heart
                             }
                         ),
-                        contentDescription = if (index < hearts) "Life remaining" else "Life lost",
+                        contentDescription = if (index < hearts) {
+                            AppStrings.Game.LIFE_REMAINING
+                        } else {
+                            AppStrings.Game.LIFE_LOST
+                        },
                         modifier = Modifier.size(dims.heartSize)
                     )
                 }
@@ -609,12 +629,12 @@ private fun MatchCardGrid(
             val matchedAlpha by animateFloatAsState(
                 targetValue = if (item.feedback == MatchCardFeedback.MATCHED) 0f else if (item.isMatched) 0f else 1f,
                 animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
-                label = "matchedAlpha"
+                label = AppConstants.Animation.MATCHED_ALPHA_LABEL
             )
             val matchedScale by animateFloatAsState(
                 targetValue = if (item.feedback == MatchCardFeedback.MATCHED) 0.82f else 1f,
                 animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
-                label = "matchedScale"
+                label = AppConstants.Animation.MATCHED_SCALE_LABEL
             )
             val flashProgress = remember(item.id) { Animatable(0f) }
             LaunchedEffect(item.feedback) {
@@ -638,20 +658,15 @@ private fun MatchCardGrid(
                 }
             }
             val containerColor = when {
-                flashProgress.value > 0f -> Color(
-                    red = 0.20f + flashProgress.value * 0.18f,
-                    green = 0.20f + flashProgress.value * 0.18f,
-                    blue = 0.20f + flashProgress.value * 0.18f,
-                    alpha = 0.26f + flashProgress.value * 0.44f
-                )
+                flashProgress.value > 0f -> matchCardFlashColor(flashProgress.value)
                 item.isMatched -> MaterialTheme.colorScheme.secondaryContainer
-                item.isSelected && item.type == MatchCardType.ENGLISH -> Color(0xFF151515)
-                item.isSelected && item.type == MatchCardType.CHINESE -> Color(0xFF3A3A3A)
+                item.isSelected && item.type == MatchCardType.ENGLISH -> WordCrushMatchEnglishSelected
+                item.isSelected && item.type == MatchCardType.CHINESE -> WordCrushMatchChineseSelected
                 item.type == MatchCardType.ENGLISH -> MaterialTheme.colorScheme.surfaceVariant
                 else -> MaterialTheme.colorScheme.surface
             }
             val contentColor = when {
-                item.isSelected -> Color(0xFFF7F7F5)
+                item.isSelected -> WordCrushMatchSelectedContent
                 else -> MaterialTheme.colorScheme.onSurface
             }
             Card(
@@ -664,7 +679,7 @@ private fun MatchCardGrid(
                         onCardClick(index)
                     },
                 colors = CardDefaults.cardColors(containerColor = containerColor),
-                border = if (item.isSelected) BorderStroke(2.dp, Color(0xFFE8E8E3)) else null,
+                border = if (item.isSelected) BorderStroke(2.dp, WordCrushMatchSelectedBorder) else null,
                 shape = RoundedCornerShape(dims.cardCornerLarge)
             ) {
                 Column(
@@ -675,7 +690,11 @@ private fun MatchCardGrid(
                     verticalArrangement = Arrangement.Top
                 ) {
                     Text(
-                        text = if (item.type == MatchCardType.ENGLISH) "EN" else "CN",
+                        text = if (item.type == MatchCardType.ENGLISH) {
+                            AppStrings.Game.ENGLISH_LABEL
+                        } else {
+                            AppStrings.Game.CHINESE_LABEL
+                        },
                         style = MaterialTheme.typography.labelMedium,
                         color = contentColor.copy(alpha = 0.78f)
                     )

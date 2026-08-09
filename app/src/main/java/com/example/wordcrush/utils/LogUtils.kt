@@ -3,36 +3,34 @@ package com.example.wordcrush.utils
 import android.util.Log
 import android.widget.Toast
 import androidx.fragment.app.FragmentActivity
+import com.example.wordcrush.constants.AppConstants
 
 object LogUtils {
-    private const val TAG = "WordCrush"
-    private const val IS_DEBUG = true
-
     fun d(message: String) {
-        if (IS_DEBUG) {
-            Log.d(TAG, message)
+        if (AppConstants.Logging.IS_DEBUG) {
+            Log.d(AppConstants.Logging.TAG, message)
         }
     }
 
     fun e(message: String, throwable: Throwable? = null) {
-        if (IS_DEBUG) {
+        if (AppConstants.Logging.IS_DEBUG) {
             if (throwable != null) {
-                Log.e(TAG, message, throwable)
+                Log.e(AppConstants.Logging.TAG, message, throwable)
             } else {
-                Log.e(TAG, message)
+                Log.e(AppConstants.Logging.TAG, message)
             }
         }
     }
 
     fun i(message: String) {
-        if (IS_DEBUG) {
-            Log.i(TAG, message)
+        if (AppConstants.Logging.IS_DEBUG) {
+            Log.i(AppConstants.Logging.TAG, message)
         }
     }
 
     fun w(message: String) {
-        if (IS_DEBUG) {
-            Log.w(TAG, message)
+        if (AppConstants.Logging.IS_DEBUG) {
+            Log.w(AppConstants.Logging.TAG, message)
         }
     }
 

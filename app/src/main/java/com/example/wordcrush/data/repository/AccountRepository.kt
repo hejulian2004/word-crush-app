@@ -5,6 +5,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import com.example.wordcrush.data.cache.AvatarCacheStore
+import com.example.wordcrush.constants.AppConstants
+import com.example.wordcrush.constants.AppStrings
 import com.example.wordcrush.data.network.ApiPaths
 import com.example.wordcrush.data.model.AvatarUploadResponse
 import com.example.wordcrush.data.model.LoginRequest
@@ -28,16 +30,12 @@ class AccountRepository @Inject constructor(
     private val avatarCacheStore: AvatarCacheStore,
     @ApplicationContext private val context: Context
 ) {
-    private companion object {
-        const val MAX_AVATAR_BYTES = 1024 * 1024
-        const val MAX_BITMAP_EDGE = 1280
-        const val MIN_BITMAP_EDGE = 320
-    }
-
     suspend fun login(username: String, password: String): Result<String> {
         return runCatching {
             val payload = accountRemoteDataSource.login(LoginRequest(username, password))
-            val user = payload.data ?: throw IllegalStateException(payload.message.ifBlank { "Login failed." })
+            val user = payload.data ?: throw IllegalStateException(
+                payload.message.ifBlank { AppStrings.Errors.LOGIN_FAILED }
+            )
             sessionManager.establish(user)
             LogUtils.d("Login success: ${user.username}")
             payload.message
@@ -49,7 +47,9 @@ class AccountRepository @Inject constructor(
     suspend fun checkToken(): Result<String> {
         return runCatching {
             val payload = accountRemoteDataSource.checkToken()
-            val user = payload.data ?: throw IllegalStateException(payload.message.ifBlank { "Session validation failed." })
+            val user = payload.data ?: throw IllegalStateException(
+                payload.message.ifBlank { AppStrings.Errors.SESSION_VALIDATION_FAILED }
+            )
             sessionManager.establish(user)
             LogUtils.d("Token validated for: ${user.username}")
             payload.message
@@ -104,35 +104,44 @@ class AccountRepository @Inject constructor(
     private fun createAvatarPart(uri: Uri): MultipartBody.Part {
         val bitmap = decodeAvatarBitmap(uri)
         val bytes = compressAvatarBitmap(bitmap)
-        val requestBody = bytes.toRequestBody("image/jpeg".toMediaTypeOrNull())
-        return MultipartBody.Part.createFormData("file", resolveFileName(uri), requestBody)
+        val requestBody = bytes.toRequestBody(
+            AppConstants.Avatar.JPEG_MIME_TYPE.toMediaTypeOrNull()
+        )
+        return MultipartBody.Part.createFormData(
+            AppConstants.Avatar.FORM_FIELD_NAME,
+            resolveFileName(uri),
+            requestBody
+        )
     }
 
     private fun decodeAvatarBitmap(uri: Uri): Bitmap {
         val contentResolver = context.contentResolver
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         val boundsStream = contentResolver.openInputStream(uri)
-            ?: throw IllegalStateException("Unable to read avatar file.")
+            ?: throw IllegalStateException(AppStrings.Errors.AVATAR_READ_FAILED)
         boundsStream.use { BitmapFactory.decodeStream(it, null, bounds) }
 
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
-            throw IllegalStateException("Unsupported avatar image.")
+            throw IllegalStateException(AppStrings.Errors.UNSUPPORTED_AVATAR)
         }
 
         val sampleSize = calculateInSampleSize(bounds.outWidth, bounds.outHeight)
         val options = BitmapFactory.Options().apply { inSampleSize = sampleSize }
         val decodeStream = contentResolver.openInputStream(uri)
-            ?: throw IllegalStateException("Unable to decode avatar file.")
+            ?: throw IllegalStateException(AppStrings.Errors.AVATAR_DECODE_FAILED)
         return decodeStream.use { stream ->
             BitmapFactory.decodeStream(stream, null, options)
-        } ?: throw IllegalStateException("Unsupported avatar image.")
+        } ?: throw IllegalStateException(AppStrings.Errors.UNSUPPORTED_AVATAR)
     }
 
     private fun calculateInSampleSize(width: Int, height: Int): Int {
         var sampleSize = 1
         var currentWidth = width
         var currentHeight = height
-        while (currentWidth > MAX_BITMAP_EDGE || currentHeight > MAX_BITMAP_EDGE) {
+        while (
+            currentWidth > AppConstants.Avatar.MAX_BITMAP_EDGE ||
+            currentHeight > AppConstants.Avatar.MAX_BITMAP_EDGE
+        ) {
             currentWidth /= 2
             currentHeight /= 2
             sampleSize *= 2
@@ -144,9 +153,15 @@ class AccountRepository @Inject constructor(
         var currentBitmap = scaleBitmapIfNeeded(bitmap)
         var bytes = compressAsJpeg(currentBitmap)
 
-        while (bytes.size > MAX_AVATAR_BYTES && currentBitmap.width > MIN_BITMAP_EDGE && currentBitmap.height > MIN_BITMAP_EDGE) {
-            val nextWidth = (currentBitmap.width * 0.8f).toInt().coerceAtLeast(MIN_BITMAP_EDGE)
-            val nextHeight = (currentBitmap.height * 0.8f).toInt().coerceAtLeast(MIN_BITMAP_EDGE)
+        while (
+            bytes.size > AppConstants.Avatar.MAX_AVATAR_BYTES &&
+            currentBitmap.width > AppConstants.Avatar.MIN_BITMAP_EDGE &&
+            currentBitmap.height > AppConstants.Avatar.MIN_BITMAP_EDGE
+        ) {
+            val nextWidth = (currentBitmap.width * 0.8f).toInt()
+                .coerceAtLeast(AppConstants.Avatar.MIN_BITMAP_EDGE)
+            val nextHeight = (currentBitmap.height * 0.8f).toInt()
+                .coerceAtLeast(AppConstants.Avatar.MIN_BITMAP_EDGE)
             currentBitmap = Bitmap.createScaledBitmap(currentBitmap, nextWidth, nextHeight, true)
             bytes = compressAsJpeg(currentBitmap)
         }
@@ -156,10 +171,10 @@ class AccountRepository @Inject constructor(
 
     private fun scaleBitmapIfNeeded(bitmap: Bitmap): Bitmap {
         val maxEdge = maxOf(bitmap.width, bitmap.height)
-        if (maxEdge <= MAX_BITMAP_EDGE) {
+        if (maxEdge <= AppConstants.Avatar.MAX_BITMAP_EDGE) {
             return bitmap
         }
-        val scale = MAX_BITMAP_EDGE.toFloat() / maxEdge.toFloat()
+        val scale = AppConstants.Avatar.MAX_BITMAP_EDGE.toFloat() / maxEdge.toFloat()
         val width = (bitmap.width * scale).toInt().coerceAtLeast(1)
         val height = (bitmap.height * scale).toInt().coerceAtLeast(1)
         return Bitmap.createScaledBitmap(bitmap, width, height, true)
@@ -173,7 +188,7 @@ class AccountRepository @Inject constructor(
             output.reset()
             bitmap.compress(Bitmap.CompressFormat.JPEG, quality, output)
             lastBytes = output.toByteArray()
-            if (lastBytes.size <= MAX_AVATAR_BYTES) {
+            if (lastBytes.size <= AppConstants.Avatar.MAX_AVATAR_BYTES) {
                 return lastBytes
             }
         }
@@ -185,12 +200,15 @@ class AccountRepository @Inject constructor(
             ?.substringAfterLast('/')
             ?.substringBeforeLast('.')
             ?.takeIf { it.isNotBlank() }
-            ?: "avatar"
-        return "$baseName.jpg"
+            ?: AppConstants.Avatar.FALLBACK_FILE_NAME
+        return "$baseName${AppConstants.Avatar.FILE_EXTENSION}"
     }
 
     private fun resolveAvatarUrl(response: AvatarUploadResponse): String {
-        if (response.avatarUrl.startsWith("http://") || response.avatarUrl.startsWith("https://")) {
+        if (
+            response.avatarUrl.startsWith(AppConstants.Avatar.HTTP_SCHEME) ||
+            response.avatarUrl.startsWith(AppConstants.Avatar.HTTPS_SCHEME)
+        ) {
             return response.avatarUrl
         }
         if (response.avatarVersion > 0L) {

@@ -2,6 +2,7 @@ package com.example.wordcrush.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.wordcrush.constants.AppStrings
 import com.example.wordcrush.domain.usecase.RegisterUseCase
 import com.example.wordcrush.ui.architecture.UdfStore
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -65,7 +66,7 @@ class RegisterViewModel @Inject constructor(
                     emitEffect(RegisterEffect.RegistrationSucceeded(message))
                 }
                 .onFailure { error ->
-                    val message = error.message ?: "Registration failed."
+                    val message = error.message ?: AppStrings.Errors.REGISTRATION_FAILED
                     setState(currentState.copy(isLoading = false, error = message))
                     emitEffect(RegisterEffect.ShowMessage(message))
                 }

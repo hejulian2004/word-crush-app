@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.wordcrush.constants.AppStrings
 import com.example.wordcrush.ui.viewmodel.MainViewModel
 import com.example.wordcrush.ui.viewmodel.MainAction
 import com.example.wordcrush.ui.viewmodel.MainEffect
@@ -33,30 +34,15 @@ internal enum class RootFlow {
     Main
 }
 
-internal object AuthRoute {
-    const val Login = "login"
-    const val Register = "register"
-}
-
-internal object MainRoute {
-    const val Breakthrough = "breakthrough"
-    const val WordBook = "word_book"
-    const val Home = "home"
-    const val RankingPattern = "ranking/{gameType}"
-    const val Records = "records"
-
-    fun ranking(gameType: Int): String = "ranking/$gameType"
-}
-
 internal data class TopLevelDestination(
     val route: String,
     val label: String
 )
 
 internal val mainDestinations = listOf(
-    TopLevelDestination(MainRoute.Breakthrough, "Match"),
-    TopLevelDestination(MainRoute.WordBook, "Words"),
-    TopLevelDestination(MainRoute.Home, "Profile")
+    TopLevelDestination(MainRoute.Breakthrough, AppStrings.Game.MATCH),
+    TopLevelDestination(MainRoute.WordBook, AppStrings.Common.WORDS),
+    TopLevelDestination(MainRoute.Home, AppStrings.Profile.TITLE)
 )
 
 @Composable
@@ -102,7 +88,11 @@ fun WordCrushApp(
             ) {
                 when (rootFlow) {
                     RootFlow.Loading -> LoadingScreen(
-                        message = if (uiState.isLoading) "Checking session..." else "Preparing app..."
+                        message = if (uiState.isLoading) {
+                            AppStrings.Loading.CHECKING_SESSION
+                        } else {
+                            AppStrings.Loading.PREPARING_APP
+                        }
                     )
                     RootFlow.Auth -> AuthFlow(
                         snackbarHostState = snackbarHostState,

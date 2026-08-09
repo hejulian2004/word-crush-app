@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.example.wordcrush.constants.AppConstants
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -16,23 +17,26 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
-val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "word_crush_preferences")
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
+    name = AppConstants.Preferences.DATA_STORE_NAME
+)
 
 @Singleton
 class PreferenceManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     companion object {
-        const val DEFAULT_DAILY_WORD_TARGET = 30
-        private val TOKEN_KEY = stringPreferencesKey("token")
-        private val USERNAME_KEY = stringPreferencesKey("username")
-        private val UID_KEY = stringPreferencesKey("uid")
-        private val AVATAR_URL_KEY = stringPreferencesKey("avatar_url")
-        private val DAILY_WORD_TARGET_KEY = intPreferencesKey("daily_word_target")
-        private val DAILY_PLAN_DATE_KEY = stringPreferencesKey("daily_plan_date")
-        private val DAILY_PLAN_WORD_IDS_KEY = stringPreferencesKey("daily_plan_word_ids")
-        private val ACTIVE_GAME_SESSIONS_KEY = stringPreferencesKey("active_game_sessions")
-        private val LEARNING_MIGRATION_COMPLETED_KEY = booleanPreferencesKey("learning_migration_completed")
+        private val TOKEN_KEY = stringPreferencesKey(AppConstants.Preferences.TOKEN_KEY)
+        private val USERNAME_KEY = stringPreferencesKey(AppConstants.Preferences.USERNAME_KEY)
+        private val UID_KEY = stringPreferencesKey(AppConstants.Preferences.UID_KEY)
+        private val AVATAR_URL_KEY = stringPreferencesKey(AppConstants.Preferences.AVATAR_URL_KEY)
+        private val DAILY_WORD_TARGET_KEY = intPreferencesKey(AppConstants.Preferences.DAILY_WORD_TARGET_KEY)
+        private val DAILY_PLAN_DATE_KEY = stringPreferencesKey(AppConstants.Preferences.DAILY_PLAN_DATE_KEY)
+        private val DAILY_PLAN_WORD_IDS_KEY = stringPreferencesKey(AppConstants.Preferences.DAILY_PLAN_WORD_IDS_KEY)
+        private val ACTIVE_GAME_SESSIONS_KEY = stringPreferencesKey(AppConstants.Preferences.ACTIVE_GAME_SESSIONS_KEY)
+        private val LEARNING_MIGRATION_COMPLETED_KEY = booleanPreferencesKey(
+            AppConstants.Preferences.LEARNING_MIGRATION_COMPLETED_KEY
+        )
     }
 
     data class PersistedSession(
@@ -43,7 +47,7 @@ class PreferenceManager @Inject constructor(
     )
 
     val dailyWordTargetFlow: Flow<Int> = context.dataStore.data.map { preferences ->
-        preferences[DAILY_WORD_TARGET_KEY] ?: DEFAULT_DAILY_WORD_TARGET
+        preferences[DAILY_WORD_TARGET_KEY] ?: AppConstants.Learning.DEFAULT_DAILY_WORD_TARGET
     }
 
     suspend fun readSession(): PersistedSession? {
@@ -93,11 +97,11 @@ class PreferenceManager @Inject constructor(
     }
 
     suspend fun getDailyWordTarget(): Int {
-        return dailyWordTargetFlow.firstOrNull() ?: DEFAULT_DAILY_WORD_TARGET
+        return dailyWordTargetFlow.firstOrNull() ?: AppConstants.Learning.DEFAULT_DAILY_WORD_TARGET
     }
 
     suspend fun saveDailyWordTarget(target: Int) {
-        val normalizedTarget = target.coerceAtLeast(1)
+        val normalizedTarget = target.coerceAtLeast(AppConstants.Learning.MIN_DAILY_WORD_TARGET)
         if (getDailyWordTarget() == normalizedTarget) {
             return
         }
@@ -116,7 +120,7 @@ class PreferenceManager @Inject constructor(
         return context.dataStore.data.map { preferences ->
             preferences[DAILY_PLAN_WORD_IDS_KEY]
                 .orEmpty()
-                .split(",")
+                .split(AppConstants.Preferences.LIST_SEPARATOR)
                 .mapNotNull { value -> value.trim().toIntOrNull() }
         }.firstOrNull().orEmpty()
     }
@@ -127,7 +131,7 @@ class PreferenceManager @Inject constructor(
         }
         context.dataStore.edit { preferences ->
             preferences[DAILY_PLAN_DATE_KEY] = date
-            preferences[DAILY_PLAN_WORD_IDS_KEY] = wordIds.joinToString(",")
+            preferences[DAILY_PLAN_WORD_IDS_KEY] = wordIds.joinToString(AppConstants.Preferences.LIST_SEPARATOR)
         }
     }
 

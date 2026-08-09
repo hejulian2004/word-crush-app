@@ -1,5 +1,7 @@
 package com.example.wordcrush.data.model
 
+import com.example.wordcrush.constants.AppConstants
+
 import com.google.gson.annotations.SerializedName
 
 data class LearningWordResponse(
@@ -29,7 +31,7 @@ data class LearningProgressResponse(
 )
 
 data class LearningStateResponse(
-    @SerializedName("dailyTarget") val dailyTarget: Int = 30,
+    @SerializedName("dailyTarget") val dailyTarget: Int = AppConstants.Learning.DEFAULT_DAILY_WORD_TARGET,
     @SerializedName("planDate") val planDate: String = "",
     @SerializedName("todayWordIds") val todayWordIds: List<Int> = emptyList(),
     @SerializedName("todayWords") val todayWords: List<LearningWordResponse> = emptyList(),

@@ -2,6 +2,8 @@ package com.example.wordcrush.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.wordcrush.constants.AppConstants
+import com.example.wordcrush.constants.AppStrings
 import com.example.wordcrush.data.model.RankingItem
 import com.example.wordcrush.domain.usecase.GetRankingUseCase
 import com.example.wordcrush.ui.architecture.UdfStore
@@ -10,7 +12,10 @@ import javax.inject.Inject
 import kotlinx.coroutines.launch
 
 sealed interface RankingAction {
-    data class Load(val gameType: Int, val limit: Int = 50) : RankingAction
+    data class Load(
+        val gameType: Int,
+        val limit: Int = AppConstants.Ranking.DEFAULT_LIMIT
+    ) : RankingAction
     data object Retry : RankingAction
 }
 
@@ -23,7 +28,7 @@ class RankingViewModel @Inject constructor(
     private val getRankingUseCase: GetRankingUseCase
 ) : ViewModel() {
     private var lastGameType: Int = 0
-    private var lastLimit: Int = 50
+    private var lastLimit: Int = AppConstants.Ranking.DEFAULT_LIMIT
 
     private val store = UdfStore<RankingUiState, RankingEffect>(RankingUiState())
     val uiState = store.uiState
@@ -61,7 +66,7 @@ class RankingViewModel @Inject constructor(
                     updateState { it.copy(isLoading = false, rankings = rankings, error = null) }
                 }
                 .onFailure { error ->
-                    val message = error.message ?: "Unable to load ranking data."
+                    val message = error.message ?: AppStrings.Errors.LOAD_RANKING_FAILED
                     updateState {
                         it.copy(
                             isLoading = false,

@@ -110,10 +110,10 @@ internal fun MainFlow(
             }
             composable(
                 route = MainRoute.RankingPattern,
-                arguments = listOf(navArgument("gameType") { type = NavType.IntType })
+                arguments = listOf(navArgument(GAME_TYPE_ARGUMENT) { type = NavType.IntType })
             ) { entry ->
                 RankingRoute(
-                    gameType = entry.arguments?.getInt("gameType") ?: 0,
+                    gameType = entry.arguments?.getInt(GAME_TYPE_ARGUMENT) ?: 0,
                     onBack = { navController.popBackStack() },
                     onShowMessage = { message ->
                         scope.launch { snackbarHostState.showSnackbar(message) }

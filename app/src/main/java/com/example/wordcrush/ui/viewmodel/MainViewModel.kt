@@ -2,6 +2,7 @@ package com.example.wordcrush.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.wordcrush.constants.AppStrings
 import com.example.wordcrush.domain.usecase.LogoutUseCase
 import com.example.wordcrush.domain.usecase.ObserveSessionUseCase
 import com.example.wordcrush.domain.usecase.BootstrapLearningDataUseCase
@@ -77,7 +78,7 @@ class MainViewModel @Inject constructor(
                         bootstrapLearningDataUseCase()
                             .onFailure { error ->
                                 emitEffect(MainEffect.ShowMessage(
-                                    error.message ?: "Learning data will use the local cache until sync succeeds."
+                                    error.message ?: AppStrings.Errors.LOCAL_CACHE_FALLBACK
                                 ))
                             }
                     }

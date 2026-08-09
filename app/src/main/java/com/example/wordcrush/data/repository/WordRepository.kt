@@ -3,6 +3,7 @@ package com.example.wordcrush.data.repository
 import android.content.Context
 import com.example.wordcrush.Database.Word.WordDao
 import com.example.wordcrush.Database.Word.WordEntity
+import com.example.wordcrush.constants.AppConstants
 import com.example.wordcrush.data.local.PreferenceManager
 import com.example.wordcrush.data.model.DailyLearningPlan
 import com.example.wordcrush.data.model.LearningProgressResponse
@@ -27,10 +28,6 @@ class WordRepository @Inject constructor(
     private val wordDao: WordDao,
     private val preferenceManager: PreferenceManager
 ) {
-    private companion object {
-        const val REQUIRED_CORRECT_MATCHES = 3
-    }
-
     private val cacheMutex = Mutex()
     private var cachedWords: List<WordItem>? = null
 
@@ -73,8 +70,8 @@ class WordRepository @Inject constructor(
         if (progress.isEmpty()) return@withContext
         val changed = progress.mapNotNull { remote ->
             wordDao.getWordById(remote.wordId)?.apply {
-                masterCount = remote.masterCount.coerceIn(0, REQUIRED_CORRECT_MATCHES)
-                setMaster(remote.mastered || masterCount >= REQUIRED_CORRECT_MATCHES)
+                masterCount = remote.masterCount.coerceIn(0, AppConstants.Learning.REQUIRED_CORRECT_MATCHES)
+                setMaster(remote.mastered || masterCount >= AppConstants.Learning.REQUIRED_CORRECT_MATCHES)
             }
         }
         if (changed.isNotEmpty()) {
@@ -115,7 +112,7 @@ class WordRepository @Inject constructor(
 
     suspend fun updateWordMastered(wordId: Int, isMastered: Boolean): WordItem? = withContext(Dispatchers.IO) {
         val entity = wordDao.getWordById(wordId) ?: return@withContext null
-        val targetMasterCount = if (isMastered) REQUIRED_CORRECT_MATCHES else 0
+        val targetMasterCount = if (isMastered) AppConstants.Learning.REQUIRED_CORRECT_MATCHES else 0
         if (entity.isMaster() == isMastered && entity.masterCount == targetMasterCount) {
             return@withContext updateCachedWord(entity.toWordItem())
         }
@@ -130,8 +127,8 @@ class WordRepository @Inject constructor(
 
     suspend fun recordCorrectMatch(wordId: Int): WordItem? = withContext(Dispatchers.IO) {
         val entity = wordDao.getWordById(wordId) ?: return@withContext null
-        val newCount = (entity.masterCount + 1).coerceAtMost(REQUIRED_CORRECT_MATCHES)
-        val shouldBeMastered = newCount >= REQUIRED_CORRECT_MATCHES
+        val newCount = (entity.masterCount + 1).coerceAtMost(AppConstants.Learning.REQUIRED_CORRECT_MATCHES)
+        val shouldBeMastered = newCount >= AppConstants.Learning.REQUIRED_CORRECT_MATCHES
         if (entity.masterCount == newCount && entity.isMaster() == shouldBeMastered) {
             return@withContext updateCachedWord(entity.toWordItem())
         }
@@ -171,7 +168,8 @@ class WordRepository @Inject constructor(
     suspend fun getDailyLearningPlan(): DailyLearningPlan = withContext(Dispatchers.IO) {
         val words = getCachedWords()
         val unmasteredWords = words.filterNot { it.isMastered }
-        val dailyTarget = preferenceManager.getDailyWordTarget().coerceAtLeast(1)
+        val dailyTarget = preferenceManager.getDailyWordTarget()
+            .coerceAtLeast(AppConstants.Learning.MIN_DAILY_WORD_TARGET)
 
         if (unmasteredWords.isEmpty()) {
             preferenceManager.clearDailyPlan()
@@ -310,7 +308,7 @@ class WordRepository @Inject constructor(
     }
 
     private fun todayKey(): String {
-        return SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+        return SimpleDateFormat(AppConstants.WordBook.DATE_FORMAT, Locale.US).format(Date())
     }
 
     private fun ensureSeeded() {
@@ -318,11 +316,14 @@ class WordRepository @Inject constructor(
             return
         }
 
-        context.assets.open("wordbook.csv").use { inputStream ->
+        context.assets.open(AppConstants.WordBook.ASSET_FILE_NAME).use { inputStream ->
             CSVReader(InputStreamReader(inputStream)).use { reader ->
                 val entities = reader.readAll()
                     .mapNotNull { row ->
-                        if (row.size != 4 || row[0] == "序号") {
+                        if (
+                            row.size != AppConstants.WordBook.CSV_COLUMN_COUNT ||
+                            row[0] == AppConstants.WordBook.CSV_SEQUENCE_HEADER
+                        ) {
                             null
                         } else {
                             WordEntity().apply {
