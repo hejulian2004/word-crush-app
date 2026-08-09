@@ -16,6 +16,8 @@ WordCrush Server is the backend for the WordCrush app. It uses Spring Boot 3, My
 - Docker / Docker Compose
 - Maven
 
+学习域以服务端词库和进度为准，Android 客户端只保留 Room 缓存及离线变更队列。开发阶段允许直接调整 schema 和接口，不维护旧接口兼容层。
+
 ## Profiles
 
 This project uses explicit Spring profiles:
@@ -103,6 +105,11 @@ Mounted files used by the app:
 - `GET /api/user/checkToken` (Bearer authentication required)
 - `POST /api/getTopNRecord`
 - `GET /api/user/avatar/{username}`
+- `GET /api/learning/catalog`
+- `GET /api/learning/state`
+- `GET /api/learning/plan`
+- `PUT /api/learning/settings/daily-target`
+- `POST /api/learning/sync`
 - `/swagger-ui/**`
 - `/api-docs/**`
 - `/actuator/**`
@@ -115,3 +122,4 @@ and query-token form are no longer accepted.
 
 - [docs/database-design.md](./docs/database-design.md)
 - [src/main/resources/db/migration/V1__init_schema.sql](./src/main/resources/db/migration/V1__init_schema.sql)
+- [src/main/resources/db/migration/V2__learning_schema.sql](./src/main/resources/db/migration/V2__learning_schema.sql)
