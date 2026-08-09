@@ -40,7 +40,7 @@ class GameRecordControllerTest {
     private RankingService rankingService;
 
     @Test
-    void shouldReturnLegacyRankingResponse() throws Exception {
+    void shouldReturnStandardRankingResponse() throws Exception {
         when(rankingService.getTopRankings(any(RankingRequest.class))).thenReturn(List.of(
                 new RankingItemResponse("alice", 25, "2026-04-02-10:11:12.345", 0L)
         ));
@@ -49,8 +49,8 @@ class GameRecordControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new RankingRequest(0, 10))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("success"))
-                .andExpect(jsonPath("$.message[0].username").value("alice"))
-                .andExpect(jsonPath("$.message[0].score").value(25));
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data[0].username").value("alice"))
+                .andExpect(jsonPath("$.data[0].score").value(25));
     }
 }

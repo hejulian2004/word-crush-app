@@ -45,7 +45,7 @@ class GameRecordControllerSecurityTest {
     private TokenService tokenService;
 
     @Test
-    void shouldRejectProtectedLegacyEndpointWithoutToken() throws Exception {
+    void shouldRejectProtectedEndpointWithoutToken() throws Exception {
         SaveGameRecordRequest request = new SaveGameRecordRequest(
                 "alice",
                 0,
@@ -58,8 +58,18 @@ class GameRecordControllerSecurityTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.status").value("fail"))
-                .andExpect(jsonPath("$.message").value("token must not be blank"));
+                .andExpect(jsonPath("$.code").value(401))
+                .andExpect(jsonPath("$.msg").value("token must not be blank"));
+    }
+
+    @Test
+    void shouldRejectLegacyTokenHeader() throws Exception {
+        mockMvc.perform(post("/api/getAllGameRecord")
+                        .header("token", "valid-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UsernameRequest("alice"))))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(401));
     }
 
     @Test
@@ -67,12 +77,12 @@ class GameRecordControllerSecurityTest {
         when(tokenService.requireValidSession("valid-token")).thenReturn(session("alice", "valid-token"));
 
         mockMvc.perform(post("/api/getAllGameRecord")
-                        .header("token", "valid-token")
+                        .header("Authorization", "Bearer valid-token")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new UsernameRequest("bob"))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("fail"))
-                .andExpect(jsonPath("$.message").value("cannot operate on another user's data"));
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(403))
+                .andExpect(jsonPath("$.msg").value("cannot operate on another user's data"));
     }
 
     @Test
@@ -81,11 +91,12 @@ class GameRecordControllerSecurityTest {
         when(gameRecordService.getAllGameRecords(any(UsernameRequest.class))).thenReturn(List.of());
 
         mockMvc.perform(post("/api/getAllGameRecord")
-                        .header("token", "valid-token")
+                        .header("Authorization", "Bearer valid-token")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new UsernameRequest("alice"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("success"));
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data").isArray());
 
         verify(gameRecordService).getAllGameRecords(new UsernameRequest("alice"));
     }

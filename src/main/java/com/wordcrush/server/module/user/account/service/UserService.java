@@ -33,8 +33,7 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public UserResponse checkToken(String token) {
-        TokenSession session = tokenService.requireValidSession(token);
+    public UserResponse checkToken(TokenSession session) {
         UserAccount user = userAccountRepository.findById(session.userId())
                 .orElseThrow(() -> new BusinessException(404, "user not found"));
         return toUserResponse(user, session);

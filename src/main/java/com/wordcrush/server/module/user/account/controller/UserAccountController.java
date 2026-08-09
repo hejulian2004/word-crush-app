@@ -6,6 +6,7 @@ import com.wordcrush.server.module.user.account.dto.RegisterRequest;
 import com.wordcrush.server.module.user.account.response.UserResponse;
 import com.wordcrush.server.module.user.account.service.UserService;
 import com.wordcrush.server.security.AuthenticatedUserContext;
+import com.wordcrush.server.security.TokenSession;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -36,9 +37,9 @@ public class UserAccountController {
 
     @GetMapping("/checkToken")
     @Operation(summary = "鏍￠獙 token")
-    public ApiResponse<UserResponse> checkToken(
-            @RequestParam @NotBlank(message = "token must not be blank") String token) {
-        return ApiResponse.success("success", userService.checkToken(token));
+    public ApiResponse<UserResponse> checkToken() {
+        TokenSession session = AuthenticatedUserContext.requireCurrentSession();
+        return ApiResponse.success("success", userService.checkToken(session));
     }
 
     @PostMapping("/register")

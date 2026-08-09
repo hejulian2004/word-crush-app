@@ -33,3 +33,13 @@ build/
 .vscode/
 
 storage/
+
+# Local deployment secrets
+.env
+.env.*
+!.env.example
+
+# Local deployment secrets
+.env
+.env.*
+!.env.example

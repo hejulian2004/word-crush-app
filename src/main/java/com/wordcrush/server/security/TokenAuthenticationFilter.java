@@ -2,7 +2,6 @@ package com.wordcrush.server.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wordcrush.server.common.api.ApiResponse;
-import com.wordcrush.server.common.api.LegacyApiResponse;
 import com.wordcrush.server.common.exception.BusinessException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -19,12 +18,6 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 public class TokenAuthenticationFilter extends OncePerRequestFilter {
-
-    private static final List<String> LEGACY_PROTECTED_ENDPOINTS = List.of(
-            "/api/addGameRecord",
-            "/api/deleteGameRecord",
-            "/api/getAllGameRecord"
-    );
 
     private final TokenService tokenService;
     private final ObjectMapper objectMapper;
@@ -44,7 +37,7 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
 
         String token = resolveToken(request);
         if (!StringUtils.hasText(token)) {
-            writeFailureResponse(request, response, 401, "token must not be blank");
+            writeFailureResponse(response, 401, "token must not be blank");
             return;
         }
 
@@ -55,7 +48,7 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
             SecurityContextHolder.setContext(context);
             filterChain.doFilter(request, response);
         } catch (BusinessException exception) {
-            writeFailureResponse(request, response, exception.getCode(), exception.getMessage());
+            writeFailureResponse(response, exception.getCode(), exception.getMessage());
         } finally {
             SecurityContextHolder.clearContext();
         }
@@ -66,7 +59,7 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
         if (!uri.startsWith("/api/")) {
             return false;
         }
-        if ("/api/user/login".equals(uri) || "/api/user/register".equals(uri) || "/api/user/checkToken".equals(uri)) {
+        if ("/api/user/login".equals(uri) || "/api/user/register".equals(uri)) {
             return false;
         }
         if ("/api/getTopNRecord".equals(uri)) {
@@ -81,20 +74,10 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
             return authorization.substring(7).trim();
         }
 
-        String headerToken = request.getHeader("token");
-        if (StringUtils.hasText(headerToken)) {
-            return headerToken.trim();
-        }
-
-        String parameterToken = request.getParameter("token");
-        if (StringUtils.hasText(parameterToken)) {
-            return parameterToken.trim();
-        }
         return null;
     }
 
     private void writeFailureResponse(
-            HttpServletRequest request,
             HttpServletResponse response,
             int code,
             String message
@@ -102,10 +85,6 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
         response.setStatus(resolveHttpStatus(code));
         response.setCharacterEncoding("UTF-8");
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        if (LEGACY_PROTECTED_ENDPOINTS.contains(request.getRequestURI())) {
-            objectMapper.writeValue(response.getWriter(), LegacyApiResponse.fail(message));
-            return;
-        }
         objectMapper.writeValue(response.getWriter(), ApiResponse.fail(code, message));
     }
 

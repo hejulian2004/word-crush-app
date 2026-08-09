@@ -13,6 +13,10 @@ import com.wordcrush.server.module.user.account.dto.LoginRequest;
 import com.wordcrush.server.module.user.account.dto.RegisterRequest;
 import com.wordcrush.server.module.user.account.response.UserResponse;
 import com.wordcrush.server.module.user.account.service.UserService;
+import com.wordcrush.server.security.TokenSession;
+import java.time.LocalDateTime;
+import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -21,11 +25,18 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @WebMvcTest(UserAccountController.class)
 @Import(SecurityConfig.class)
 @AutoConfigureMockMvc(addFilters = false)
 class UserAccountControllerTest {
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Autowired
     private MockMvc mockMvc;
@@ -66,10 +77,20 @@ class UserAccountControllerTest {
 
     @Test
     void shouldReturnCheckTokenResponse() throws Exception {
-        when(userService.checkToken("token-string"))
+        TokenSession session = new TokenSession(
+                1L,
+                "admin",
+                "token-string",
+                LocalDateTime.of(2026, 4, 3, 10, 0),
+                LocalDateTime.of(2026, 4, 10, 10, 0)
+        );
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(session, session.token(), List.of())
+        );
+        when(userService.checkToken(session))
                 .thenReturn(new UserResponse("admin", "1", "token-string"));
 
-        mockMvc.perform(get("/api/user/checkToken").param("token", "token-string"))
+        mockMvc.perform(get("/api/user/checkToken"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.username").value("admin"));

@@ -55,6 +55,25 @@ Production behavior:
 - `resume.html` is served from a bind-mounted directory, so you can edit it on the host without rebuilding the image
 - `/images/avatar.jpg` is also served from a bind-mounted directory for the same reason
 
+WordCrush deployment uses the existing relay Docker network and HTTPS entrypoint:
+
+- backend container port: `8080`
+- host diagnostic binding: `127.0.0.1:18080`
+- public API prefix: `https://txy.hejulian.org/word-crush/`
+- MySQL and Redis are internal Compose services and are not published to the host
+
+For local Docker testing, pass `.env.example` explicitly:
+
+```bash
+docker compose --env-file .env.example up --build -d
+```
+
+For the Tencent Cloud deployment, use the server overlay so the app joins the existing relay network:
+
+```bash
+docker compose --env-file .env -f docker-compose.yml -f docker-compose.server.yml up --build -d
+```
+
 Mounted files used by the app:
 
 - `src/main/resources/templates/resume.html` -> `/app/external-resume/resume.html`
@@ -81,12 +100,16 @@ Mounted files used by the app:
 
 - `POST /api/user/login`
 - `POST /api/user/register`
-- `GET /api/user/checkToken`
+- `GET /api/user/checkToken` (Bearer authentication required)
 - `POST /api/getTopNRecord`
 - `GET /api/user/avatar/{username}`
 - `/swagger-ui/**`
 - `/api-docs/**`
 - `/actuator/**`
+
+JSON APIs use the standard `{code, msg, data}` response envelope. Protected
+requests must send `Authorization: Bearer <token>`; the legacy `token` header
+and query-token form are no longer accepted.
 
 ## Useful Links
 

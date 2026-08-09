@@ -2,14 +2,11 @@
 services:
   mysql:
     image: mysql:8.4.7
-    container_name: word-crush-mysql
     environment:
-      MYSQL_DATABASE: word_crush
-      MYSQL_USER: wordcrush
-      MYSQL_PASSWORD: wordcrush123
-      MYSQL_ROOT_PASSWORD: root123456
-    ports:
-      - "3306:3306"
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-word_crush}
+      MYSQL_USER: ${MYSQL_USERNAME:?MYSQL_USERNAME must be set}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set}
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
@@ -21,16 +18,13 @@ services:
       - mysql-data:/var/lib/mysql
     mem_limit: 768m
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -proot123456"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost --password=$${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 10
 
   redis:
     image: redis:7.4-alpine
-    container_name: word-crush-redis
-    ports:
-      - "6379:6379"
     command:
       - redis-server
       - --appendonly
@@ -52,24 +46,24 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: word-crush-server
     depends_on:
       mysql:
         condition: service_healthy
       redis:
         condition: service_healthy
     environment:
-      SPRING_PROFILES_ACTIVE: prod
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       SERVER_PORT: 8080
-      MYSQL_URL: jdbc:mysql://mysql:3306/word_crush?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
-      MYSQL_USERNAME: wordcrush
-      MYSQL_PASSWORD: wordcrush123
+      MYSQL_URL: "${MYSQL_URL:-jdbc:mysql://mysql:3306/word_crush?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}"
+      MYSQL_USERNAME: ${MYSQL_USERNAME:?MYSQL_USERNAME must be set}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      JWT_SECRET: WordCrushJwtSecretKeyForResumeBuild1234567890
-      JWT_EXPIRATION_HOURS: 168
-      BOOTSTRAP_ADMIN_USERNAME: admin
-      BOOTSTRAP_ADMIN_PASSWORD: 123456
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      JWT_EXPIRATION_HOURS: ${JWT_EXPIRATION_HOURS:-168}
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:?BOOTSTRAP_ADMIN_USERNAME must be set}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:?BOOTSTRAP_ADMIN_PASSWORD must be set}
       JAVA_TOOL_OPTIONS: >-
         -XX:MaxRAMPercentage=40
         -XX:InitialRAMPercentage=15
@@ -77,10 +71,11 @@ services:
         -XX:ReservedCodeCacheSize=64m
         -XX:+UseSerialGC
     ports:
-      - "8080:8080"
+      - "127.0.0.1:${WORDCRUSH_HOST_PORT:-18080}:8080"
     volumes:
       - ./src/main/resources/templates:/app/external-resume:ro
       - ./src/main/resources/static:/app/external-static:ro
+      - ./storage:/app/storage
     mem_limit: 512m
     restart: unless-stopped
 
