@@ -1,5 +1,6 @@
 package com.wordcrush.server.security;
 
+import com.wordcrush.server.common.api.ApiCode;
 import com.wordcrush.server.common.exception.BusinessException;
 import com.wordcrush.server.config.JwtProperties;
 import io.jsonwebtoken.Claims;
@@ -44,7 +45,7 @@ public class JwtTokenProvider {
                     .parseSignedClaims(token)
                     .getPayload();
         } catch (JwtException | IllegalArgumentException exception) {
-            throw new BusinessException(401, "invalid token");
+            throw new BusinessException(ApiCode.UNAUTHORIZED, "invalid token");
         }
     }
 }

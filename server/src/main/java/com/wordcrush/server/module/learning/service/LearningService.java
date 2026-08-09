@@ -1,5 +1,6 @@
 package com.wordcrush.server.module.learning.service;
 
+import com.wordcrush.server.common.api.ApiCode;
 import com.wordcrush.server.common.exception.BusinessException;
 import com.wordcrush.server.module.learning.dto.DailyTargetRequest;
 import com.wordcrush.server.module.learning.dto.LearningMutationRequest;
@@ -179,7 +180,7 @@ public class LearningService {
     private void applyWordMutation(UserAccount user, LearningMutationRequest mutation) {
         LearningWord word = learningWordRepository.findById(mutation.wordId())
                 .filter(item -> item.getStatus() == ACTIVE_STATUS)
-                .orElseThrow(() -> new BusinessException(404, "word not found"));
+                .orElseThrow(() -> new BusinessException(ApiCode.NOT_FOUND, "word not found"));
         UserWordProgress progress = progressRepository.findByUser_IdAndWord_Id(user.getId(), word.getId())
                 .orElseGet(() -> newProgress(user, word));
         int current = progress.getMasterCount() == null ? 0 : progress.getMasterCount();
@@ -353,9 +354,9 @@ public class LearningService {
 
     private UserAccount loadUser(TokenSession session) {
         if (session == null) {
-            throw new BusinessException(401, "invalid token");
+            throw new BusinessException(ApiCode.UNAUTHORIZED, "invalid token");
         }
         return userAccountRepository.findById(session.userId())
-                .orElseThrow(() -> new BusinessException(404, "user not found"));
+                .orElseThrow(() -> new BusinessException(ApiCode.NOT_FOUND, "user not found"));
     }
 }

@@ -22,9 +22,32 @@
 }
 ```
 
-- `code == 200` 表示业务成功。
-- 失败请求使用对应 HTTP 状态码，并返回相同结构。
-- `data` 可以是对象、数组、字符串或 `null`。
+- `code` 与 HTTP 状态码保持一致，只有 `code == 200` 表示成功。
+- 所有成功 JSON 接口的 `msg` 固定为 `success`。
+- 无业务数据的成功响应使用 `data: null`。
+- 失败请求使用对应 HTTP 状态码，并返回相同结构，错误响应的 `data` 固定为 `null`。
+- 4xx 错误返回具体英文提示，5xx 错误统一返回 `internal server error`。
+
+常用错误码：
+
+| HTTP/code | 含义 |
+| --- | --- |
+| 400 | 请求参数或请求体无效 |
+| 401 | 未认证、token 无效或已过期 |
+| 403 | 无权操作目标资源 |
+| 404 | 资源不存在 |
+| 409 | 资源冲突，例如用户名已存在 |
+| 500 | 服务端内部错误 |
+
+错误示例：
+
+```json
+{
+  "code": 401,
+  "msg": "invalid token",
+  "data": null
+}
+```
 
 ## 公共接口
 
@@ -157,7 +180,7 @@ POST api/addGameRecord
 {
   "code": 200,
   "msg": "success",
-  "data": "ok"
+  "data": null
 }
 ```
 
@@ -167,7 +190,7 @@ POST api/addGameRecord
 POST api/deleteGameRecord
 ```
 
-请求体使用 `username + gameType + score + time` 定位记录，成功时 `data` 为 `deleted`。
+请求体使用 `username + gameType + score + time` 定位记录，成功时 `data` 为 `null`。
 
 ### 查询用户游戏记录
 

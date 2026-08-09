@@ -22,10 +22,10 @@ class GameRecordRemoteDataSource @Inject constructor(
     suspend fun getTopRankings(request: RankingRequest): ApiPayload<List<RemoteRankingItem>> =
         executor.execute { publicApi.getTopRankings(request) }
 
-    suspend fun saveGameRecord(request: SaveGameRecordRequest): ApiPayload<String> =
+    suspend fun saveGameRecord(request: SaveGameRecordRequest): ApiPayload<Unit> =
         executor.execute { authenticatedApi.saveGameRecord(request) }
 
-    suspend fun deleteGameRecord(request: DeleteGameRecordRequest): ApiPayload<String> =
+    suspend fun deleteGameRecord(request: DeleteGameRecordRequest): ApiPayload<Unit> =
         executor.execute { authenticatedApi.deleteGameRecord(request) }
 
     suspend fun getAllGameRecords(request: UsernameRequest): ApiPayload<List<RemoteGameRecord>> =

@@ -11,6 +11,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 data class ApiPayload<T>(
+    val code: Int,
     val data: T?,
     val message: String
 )
@@ -34,31 +35,37 @@ class ApiCallExecutor @Inject constructor(
             throw NetworkException.Serialization(error)
         }
 
-        if (!response.isSuccessful) {
+        if (!response.isSuccessful || response.code() != 200) {
             throw response.toNetworkException()
         }
 
         val body = response.body()
             ?: throw NetworkException.Serialization(IllegalStateException("Empty response body"))
         if (!body.isSuccess()) {
-            throw NetworkException.Business(body.code, body.msg.ifBlank { "Request failed." })
+            throw NetworkException.Server(
+                httpStatusCode = response.code(),
+                code = body.code,
+                detail = body.msg.ifBlank { "Request failed." }
+            )
         }
-        return ApiPayload(body.data, body.msg)
+        return ApiPayload(
+            code = body.code,
+            data = body.data,
+            message = body.msg.ifBlank { "success" }
+        )
     }
 
     private fun <T> Response<ApiResponse<T>>.toNetworkException(): NetworkException {
-        if (code() == 401) {
-            return NetworkException.Unauthorized
-        }
-
         val errorText = errorBody()?.use { it.string() }.orEmpty().trim()
         val error = runCatching {
             gson.fromJson(errorText, ErrorPayload::class.java)
         }.getOrNull()
+        val responseCode = error?.code?.takeIf { it > 0 } ?: code()
         val detail = error?.msg?.takeIf { it.isNotBlank() }
             ?: errorText.takeIf { it.isNotBlank() }
             ?: message().takeIf { it.isNotBlank() }
-        return NetworkException.Http(code(), detail)
+            ?: "Request failed."
+        return NetworkException.Server(code(), responseCode, detail)
     }
 
     private data class ErrorPayload(

@@ -1,5 +1,6 @@
 package com.wordcrush.server.module.user.account.service;
 
+import com.wordcrush.server.common.api.ApiCode;
 import com.wordcrush.server.common.exception.BusinessException;
 import com.wordcrush.server.module.user.account.dto.LoginRequest;
 import com.wordcrush.server.module.user.account.dto.RegisterRequest;
@@ -24,9 +25,9 @@ public class UserService {
     @Transactional(readOnly = true)
     public UserResponse login(LoginRequest request) {
         UserAccount user = userAccountRepository.findByUsername(request.username())
-                .orElseThrow(() -> new BusinessException(401, "invalid username or password"));
+                .orElseThrow(() -> new BusinessException(ApiCode.UNAUTHORIZED, "invalid username or password"));
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            throw new BusinessException(401, "invalid username or password");
+            throw new BusinessException(ApiCode.UNAUTHORIZED, "invalid username or password");
         }
         tokenService.revokeUserTokens(user.getId());
         return toUserResponse(user, tokenService.issueToken(user));
@@ -35,7 +36,7 @@ public class UserService {
     @Transactional(readOnly = true)
     public UserResponse checkToken(TokenSession session) {
         UserAccount user = userAccountRepository.findById(session.userId())
-                .orElseThrow(() -> new BusinessException(404, "user not found"));
+                .orElseThrow(() -> new BusinessException(ApiCode.NOT_FOUND, "user not found"));
         return toUserResponse(user, session);
     }
 
@@ -43,7 +44,7 @@ public class UserService {
     public UserResponse register(RegisterRequest request) {
         String username = request.username().trim();
         if (userAccountRepository.existsByUsername(username)) {
-            throw new BusinessException(409, "username already exists");
+            throw new BusinessException(ApiCode.CONFLICT, "username already exists");
         }
         UserAccount user = new UserAccount();
         user.setUsername(username);
@@ -56,9 +57,9 @@ public class UserService {
     @Transactional
     public void changePassword(String username, String oldPassword, String newPassword) {
         UserAccount user = userAccountRepository.findByUsername(username)
-                .orElseThrow(() -> new BusinessException(404, "user not found"));
+                .orElseThrow(() -> new BusinessException(ApiCode.NOT_FOUND, "user not found"));
         if (!passwordEncoder.matches(oldPassword, user.getPasswordHash())) {
-            throw new BusinessException(400, "old password is incorrect");
+            throw new BusinessException(ApiCode.BAD_REQUEST, "old password is incorrect");
         }
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         tokenService.revokeUserTokens(user.getId());

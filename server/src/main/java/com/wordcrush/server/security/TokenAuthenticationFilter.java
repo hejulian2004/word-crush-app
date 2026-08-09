@@ -1,7 +1,8 @@
 package com.wordcrush.server.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.wordcrush.server.common.api.ApiResponse;
+import com.wordcrush.server.common.api.ApiCode;
+import com.wordcrush.server.common.api.ApiResponseWriter;
 import com.wordcrush.server.common.exception.BusinessException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -10,7 +11,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -37,7 +37,7 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
 
         String token = resolveToken(request);
         if (!StringUtils.hasText(token)) {
-            writeFailureResponse(response, 401, "token must not be blank");
+            writeFailureResponse(response, ApiCode.UNAUTHORIZED, "token must not be blank");
             return;
         }
 
@@ -79,22 +79,9 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
 
     private void writeFailureResponse(
             HttpServletResponse response,
-            int code,
+            ApiCode code,
             String message
     ) throws IOException {
-        response.setStatus(resolveHttpStatus(code));
-        response.setCharacterEncoding("UTF-8");
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        objectMapper.writeValue(response.getWriter(), ApiResponse.fail(code, message));
-    }
-
-    private int resolveHttpStatus(int code) {
-        return switch (code) {
-            case 401 -> HttpServletResponse.SC_UNAUTHORIZED;
-            case 403 -> HttpServletResponse.SC_FORBIDDEN;
-            case 404 -> HttpServletResponse.SC_NOT_FOUND;
-            case 409 -> HttpServletResponse.SC_CONFLICT;
-            default -> HttpServletResponse.SC_BAD_REQUEST;
-        };
+        ApiResponseWriter.write(response, objectMapper, code, message);
     }
 }

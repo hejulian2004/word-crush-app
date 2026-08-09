@@ -2,12 +2,15 @@ package com.wordcrush.server.module.user.account.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wordcrush.server.common.api.ApiCode;
+import com.wordcrush.server.common.exception.BusinessException;
 import com.wordcrush.server.config.SecurityConfig;
 import com.wordcrush.server.module.user.account.dto.LoginRequest;
 import com.wordcrush.server.module.user.account.dto.RegisterRequest;
@@ -67,12 +70,26 @@ class UserAccountControllerTest {
         when(userService.register(any(RegisterRequest.class)))
                 .thenReturn(new UserResponse("tom", "2", "new-token"));
 
-        mockMvc.perform(post("/api/user/register")
+                mockMvc.perform(post("/api/user/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new RegisterRequest("tom", "123456"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.msg").value("register success"))
+                .andExpect(jsonPath("$.msg").value("success"))
                 .andExpect(jsonPath("$.data.token").value("new-token"));
+    }
+
+    @Test
+    void shouldReturnUnifiedInternalErrorResponse() throws Exception {
+        when(userService.login(any(LoginRequest.class)))
+                .thenThrow(new BusinessException(ApiCode.INTERNAL_SERVER_ERROR, "internal server error"));
+
+        mockMvc.perform(post("/api/user/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new LoginRequest("admin", "123456"))))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.code").value(500))
+                .andExpect(jsonPath("$.msg").value("internal server error"))
+                .andExpect(jsonPath("$.data").value(nullValue()));
     }
 
     @Test

@@ -31,27 +31,27 @@ public class GameRecordController {
     @PostMapping("/getTopNRecord")
     @Operation(summary = "鑾峰彇鎺掕姒?")
     public ApiResponse<List<RankingItemResponse>> getTopNRecord(@RequestBody RankingRequest request) {
-        return ApiResponse.success("success", rankingService.getTopRankings(request));
+        return ApiResponse.success(rankingService.getTopRankings(request));
     }
 
     @PostMapping("/addGameRecord")
     @Operation(summary = "鏂板娓告垙璁板綍")
-    public ApiResponse<String> addGameRecord(@RequestBody SaveGameRecordRequest request) {
+    public ApiResponse<Void> addGameRecord(@RequestBody SaveGameRecordRequest request) {
         if (request != null) {
             AuthenticatedUserContext.requireAccessToUsername(request.username());
         }
         gameRecordService.addGameRecord(request);
-        return ApiResponse.success("success", "ok");
+        return ApiResponse.success();
     }
 
     @PostMapping("/deleteGameRecord")
     @Operation(summary = "鍒犻櫎娓告垙璁板綍")
-    public ApiResponse<String> deleteGameRecord(@RequestBody DeleteGameRecordRequest request) {
+    public ApiResponse<Void> deleteGameRecord(@RequestBody DeleteGameRecordRequest request) {
         if (request != null) {
             AuthenticatedUserContext.requireAccessToUsername(request.username());
         }
         gameRecordService.deleteGameRecord(request);
-        return ApiResponse.success("success", "deleted");
+        return ApiResponse.success();
     }
 
     @PostMapping("/getAllGameRecord")
@@ -60,6 +60,6 @@ public class GameRecordController {
         if (request != null) {
             AuthenticatedUserContext.requireAccessToUsername(request.username());
         }
-        return ApiResponse.success("success", gameRecordService.getAllGameRecords(request));
+        return ApiResponse.success(gameRecordService.getAllGameRecords(request));
     }
 }

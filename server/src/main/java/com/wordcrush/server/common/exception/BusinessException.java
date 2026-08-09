@@ -1,18 +1,19 @@
 package com.wordcrush.server.common.exception;
 
+import com.wordcrush.server.common.api.ApiCode;
 import lombok.Getter;
 
 @Getter
 public class BusinessException extends RuntimeException {
 
-    private final int code;
+    private final ApiCode code;
 
-    public BusinessException(int code, String message) {
+    public BusinessException(ApiCode code, String message) {
         super(message);
         this.code = code;
     }
 
     public BusinessException(String message) {
-        this(400, message);
+        this(ApiCode.BAD_REQUEST, message);
     }
 }

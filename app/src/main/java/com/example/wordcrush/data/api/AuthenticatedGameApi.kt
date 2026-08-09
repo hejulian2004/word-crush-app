@@ -13,12 +13,12 @@ interface AuthenticatedGameApi {
     @POST("api/addGameRecord")
     suspend fun saveGameRecord(
         @Body request: SaveGameRecordRequest
-    ): Response<ApiResponse<String>>
+    ): Response<ApiResponse<Unit>>
 
     @POST("api/deleteGameRecord")
     suspend fun deleteGameRecord(
         @Body request: DeleteGameRecordRequest
-    ): Response<ApiResponse<String>>
+    ): Response<ApiResponse<Unit>>
 
     @POST("api/getAllGameRecord")
     suspend fun getAllGameRecords(

@@ -1,5 +1,6 @@
 package com.wordcrush.server.module.user.avatar.service;
 
+import com.wordcrush.server.common.api.ApiCode;
 import com.wordcrush.server.common.exception.BusinessException;
 import com.wordcrush.server.module.user.account.repository.UserAccountRepository;
 import java.io.IOException;
@@ -42,7 +43,7 @@ public class AvatarStorageService {
     public String storeAvatar(String username, MultipartFile file) {
         validateUser(username);
         if (file == null || file.isEmpty()) {
-            throw new BusinessException(400, "avatar file must not be empty");
+            throw new BusinessException(ApiCode.BAD_REQUEST, "avatar file must not be empty");
         }
 
         String extension = resolveExtension(file);
@@ -58,7 +59,7 @@ public class AvatarStorageService {
             avatarCacheService.cacheAvatarVersion(username, lastModified(target).toMillis());
             return avatarUrl(username);
         } catch (IOException exception) {
-            throw new BusinessException(500, "avatar upload failed");
+            throw new BusinessException(ApiCode.INTERNAL_SERVER_ERROR, "internal server error");
         }
     }
 
@@ -66,24 +67,24 @@ public class AvatarStorageService {
         validateUser(username);
         Path avatarPath = findAvatarPath(username);
         if (avatarPath == null) {
-            throw new BusinessException(404, "avatar not found");
+            throw new BusinessException(ApiCode.NOT_FOUND, "avatar not found");
         }
 
         try {
             Resource resource = new UrlResource(avatarPath.toUri());
             if (!resource.exists() || !resource.isReadable()) {
-                throw new BusinessException(404, "avatar not found");
+                throw new BusinessException(ApiCode.NOT_FOUND, "avatar not found");
             }
             return resource;
         } catch (MalformedURLException exception) {
-            throw new BusinessException(500, "avatar read failed");
+            throw new BusinessException(ApiCode.INTERNAL_SERVER_ERROR, "internal server error");
         }
     }
 
     public String detectContentType(String username) {
         Path avatarPath = findAvatarPath(username);
         if (avatarPath == null) {
-            throw new BusinessException(404, "avatar not found");
+            throw new BusinessException(ApiCode.NOT_FOUND, "avatar not found");
         }
 
         try {
@@ -111,10 +112,10 @@ public class AvatarStorageService {
 
     private void validateUser(String username) {
         if (!StringUtils.hasText(username)) {
-            throw new BusinessException(400, "username must not be blank");
+            throw new BusinessException(ApiCode.BAD_REQUEST, "username must not be blank");
         }
         if (!userAccountRepository.existsByUsername(username)) {
-            throw new BusinessException(404, "user not found");
+            throw new BusinessException(ApiCode.NOT_FOUND, "user not found");
         }
     }
 
@@ -122,12 +123,12 @@ public class AvatarStorageService {
         String originalFilename = file.getOriginalFilename();
         String extension = StringUtils.getFilenameExtension(originalFilename);
         if (!StringUtils.hasText(extension)) {
-            throw new BusinessException(400, "unsupported avatar file type");
+            throw new BusinessException(ApiCode.BAD_REQUEST, "unsupported avatar file type");
         }
 
         String normalized = extension.toLowerCase(Locale.ROOT);
         if (!ALLOWED_EXTENSIONS.contains(normalized)) {
-            throw new BusinessException(400, "unsupported avatar file type");
+            throw new BusinessException(ApiCode.BAD_REQUEST, "unsupported avatar file type");
         }
         return normalized;
     }
@@ -165,7 +166,7 @@ public class AvatarStorageService {
                     .max(Comparator.comparing(this::lastModified))
                     .orElse(null);
         } catch (IOException exception) {
-            throw new BusinessException(500, "avatar read failed");
+            throw new BusinessException(ApiCode.INTERNAL_SERVER_ERROR, "internal server error");
         }
     }
 

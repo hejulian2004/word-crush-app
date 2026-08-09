@@ -39,14 +39,14 @@ public class LearningController {
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "100") Integer size
     ) {
-        return ApiResponse.success("success", learningService.getCatalog(
+        return ApiResponse.success(learningService.getCatalog(
                 AuthenticatedUserContext.requireCurrentSession(), query, mastered, ids, page, size));
     }
 
     @GetMapping("/state")
     @Operation(summary = "获取学习状态")
     public ApiResponse<LearningStateResponse> getState() {
-        return ApiResponse.success("success", learningService.getState(
+        return ApiResponse.success(learningService.getState(
                 AuthenticatedUserContext.requireCurrentSession()));
     }
 
@@ -59,14 +59,14 @@ public class LearningController {
     @PutMapping("/settings/daily-target")
     @Operation(summary = "更新每日学习数量")
     public ApiResponse<LearningStateResponse> updateDailyTarget(@RequestBody DailyTargetRequest request) {
-        return ApiResponse.success("daily target updated", learningService.updateDailyTarget(
+        return ApiResponse.success(learningService.updateDailyTarget(
                 AuthenticatedUserContext.requireCurrentSession(), request));
     }
 
     @PostMapping("/sync")
     @Operation(summary = "同步离线学习进度")
     public ApiResponse<LearningSyncResponse> sync(@RequestBody LearningSyncRequest request) {
-        return ApiResponse.success("learning data synced", learningService.sync(
+        return ApiResponse.success(learningService.sync(
                 AuthenticatedUserContext.requireCurrentSession(), request));
     }
 }

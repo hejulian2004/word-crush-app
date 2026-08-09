@@ -6,17 +6,11 @@ sealed class NetworkException(
     message: String,
     cause: Throwable? = null
 ) : IOException(message, cause) {
-    data class Http(
-        val statusCode: Int,
-        val detail: String?
-    ) : NetworkException(detail ?: "HTTP request failed with status $statusCode")
-
-    data class Business(
+    data class Server(
+        val httpStatusCode: Int,
         val code: Int,
         val detail: String
     ) : NetworkException(detail)
-
-    data object Unauthorized : NetworkException("Session expired. Please log in again.")
 
     data object Offline : NetworkException("Network connection is unavailable.")
 

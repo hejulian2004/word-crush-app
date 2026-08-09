@@ -38,7 +38,7 @@ public class UserAvatarController {
             @RequestParam("file") MultipartFile file) {
         AuthenticatedUserContext.requireAccessToUsername(username);
         String avatarUrl = avatarStorageService.storeAvatar(username, file);
-        return ApiResponse.success("avatar uploaded", new AvatarUploadResponse(
+        return ApiResponse.success(new AvatarUploadResponse(
                 username,
                 avatarUrl,
                 avatarStorageService.avatarVersion(username)

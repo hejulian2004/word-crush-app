@@ -32,20 +32,20 @@ public class UserAccountController {
     @PostMapping("/login")
     @Operation(summary = "鐧诲綍")
     public ApiResponse<UserResponse> login(@Valid @RequestBody LoginRequest request) {
-        return ApiResponse.success("success", userService.login(request));
+        return ApiResponse.success(userService.login(request));
     }
 
     @GetMapping("/checkToken")
     @Operation(summary = "鏍￠獙 token")
     public ApiResponse<UserResponse> checkToken() {
         TokenSession session = AuthenticatedUserContext.requireCurrentSession();
-        return ApiResponse.success("success", userService.checkToken(session));
+        return ApiResponse.success(userService.checkToken(session));
     }
 
     @PostMapping("/register")
     @Operation(summary = "娉ㄥ唽")
     public ApiResponse<UserResponse> register(@Valid @RequestBody RegisterRequest request) {
-        return ApiResponse.success("register success", userService.register(request));
+        return ApiResponse.success(userService.register(request));
     }
 
     @PostMapping("/changePassword")
@@ -56,6 +56,6 @@ public class UserAccountController {
             @RequestParam @NotBlank(message = "newPassword must not be blank") String newPassword) {
         AuthenticatedUserContext.requireAccessToUsername(username);
         userService.changePassword(username, oldPassword, newPassword);
-        return ApiResponse.success("password changed");
+        return ApiResponse.success();
     }
 }

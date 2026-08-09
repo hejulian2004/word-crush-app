@@ -1,15 +1,23 @@
 package com.wordcrush.server.common.exception;
 
+import com.wordcrush.server.common.api.ApiCode;
 import com.wordcrush.server.common.api.ApiResponse;
+import com.wordcrush.server.common.api.ApiResponseWriter;
 import jakarta.validation.ConstraintViolationException;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
 @RestControllerAdvice
@@ -17,8 +25,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException exception) {
-        return ResponseEntity.status(resolveStatus(exception.getCode()))
-                .body(ApiResponse.fail(exception.getCode(), exception.getMessage()));
+        return response(exception.getCode(), exception.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -29,28 +36,62 @@ public class GlobalExceptionHandler {
                 .stream()
                 .map(FieldError::getDefaultMessage)
                 .collect(Collectors.joining("; "));
-        return ResponseEntity.badRequest().body(ApiResponse.fail(400, message));
+        return response(ApiCode.BAD_REQUEST, message.isBlank() ? "invalid request" : message);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleConstraintViolationException(
             ConstraintViolationException exception) {
-        return ResponseEntity.badRequest().body(ApiResponse.fail(400, exception.getMessage()));
+        String message = exception.getMessage();
+        return response(ApiCode.BAD_REQUEST, message == null || message.isBlank()
+                ? "invalid request"
+                : message);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnreadableMessage() {
+        return response(ApiCode.BAD_REQUEST, "invalid request body");
+    }
+
+    @ExceptionHandler({
+            MissingServletRequestParameterException.class,
+            MissingServletRequestPartException.class,
+            MethodArgumentTypeMismatchException.class
+    })
+    public ResponseEntity<ApiResponse<Void>> handleInvalidRequest(Exception exception) {
+        String message = "invalid request";
+        if (exception instanceof MissingServletRequestParameterException missing) {
+            message = "missing request parameter: " + missing.getParameterName();
+        } else if (exception instanceof MissingServletRequestPartException missing) {
+            message = "missing request part: " + missing.getRequestPartName();
+        } else if (exception instanceof MethodArgumentTypeMismatchException mismatch) {
+            message = "invalid request parameter: " + mismatch.getName();
+        }
+        return response(ApiCode.BAD_REQUEST, message);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodNotSupported() {
+        return response(ApiCode.METHOD_NOT_ALLOWED, "method not allowed");
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMediaTypeNotSupported() {
+        return response(ApiCode.UNSUPPORTED_MEDIA_TYPE, "unsupported media type");
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleResourceNotFound() {
+        return response(ApiCode.NOT_FOUND, "resource not found");
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception exception) {
         log.error("Unhandled exception", exception);
-        return ResponseEntity.internalServerError().body(ApiResponse.fail(500, "internal server error"));
+        return response(ApiCode.INTERNAL_SERVER_ERROR, "internal server error");
     }
 
-    private HttpStatus resolveStatus(int code) {
-        return switch (code) {
-            case 401 -> HttpStatus.UNAUTHORIZED;
-            case 403 -> HttpStatus.FORBIDDEN;
-            case 404 -> HttpStatus.NOT_FOUND;
-            case 409 -> HttpStatus.CONFLICT;
-            default -> HttpStatus.BAD_REQUEST;
-        };
+    private ResponseEntity<ApiResponse<Void>> response(ApiCode code, String message) {
+        return ApiResponseWriter.entity(code, message);
     }
 }

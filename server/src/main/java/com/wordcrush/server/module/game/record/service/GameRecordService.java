@@ -1,5 +1,6 @@
 package com.wordcrush.server.module.game.record.service;
 
+import com.wordcrush.server.common.api.ApiCode;
 import com.wordcrush.server.common.constant.GameType;
 import com.wordcrush.server.common.exception.BusinessException;
 import com.wordcrush.server.common.util.TimeFormats;
@@ -84,7 +85,7 @@ public class GameRecordService {
                         request.gameType(),
                         request.score(),
                         playedAt)
-                .orElseThrow(() -> new BusinessException(404, "game record not found"));
+                .orElseThrow(() -> new BusinessException(ApiCode.NOT_FOUND, "game record not found"));
         gameRecordRepository.delete(record);
         rankingCacheService.evictGameType(request.gameType());
     }
@@ -110,7 +111,7 @@ public class GameRecordService {
 
     private UserAccount loadUser(String username) {
         return userAccountRepository.findByUsername(username)
-                .orElseThrow(() -> new BusinessException(404, "user not found"));
+                .orElseThrow(() -> new BusinessException(ApiCode.NOT_FOUND, "user not found"));
     }
 
     private void validateUsername(String username) {

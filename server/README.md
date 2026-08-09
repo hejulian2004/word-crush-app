@@ -114,9 +114,13 @@ Mounted files used by the app:
 - `/api-docs/**`
 - `/actuator/**`
 
-JSON APIs use the standard `{code, msg, data}` response envelope. Protected
-requests must send `Authorization: Bearer <token>`; the legacy `token` header
-and query-token form are no longer accepted.
+JSON APIs use the standard `{code, msg, data}` response envelope. `code` is the
+HTTP status code and only `200` represents success. Successful responses use
+`msg: "success"`; responses without business data use `data: null`. Error
+responses keep the same envelope, use the matching HTTP status/code, and never
+expose server internals. Protected requests must send
+`Authorization: Bearer <token>`; the legacy `token` header and query-token form
+are no longer accepted.
 
 ## Useful Links
 

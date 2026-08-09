@@ -2,6 +2,7 @@ package com.wordcrush.server.security;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wordcrush.server.common.api.ApiCode;
 import com.wordcrush.server.common.exception.BusinessException;
 import com.wordcrush.server.config.JwtProperties;
 import com.wordcrush.server.module.user.account.entity.UserAccount;
@@ -41,22 +42,22 @@ public class TokenService {
 
     public TokenSession requireValidSession(String token) {
         if (!StringUtils.hasText(token)) {
-            throw new BusinessException(401, "token must not be blank");
+            throw new BusinessException(ApiCode.UNAUTHORIZED, "token must not be blank");
         }
         Claims claims = jwtTokenProvider.parseToken(token);
         String raw = stringRedisTemplate.opsForValue().get(tokenKey(token));
         if (!StringUtils.hasText(raw)) {
-            throw new BusinessException(401, "token expired");
+            throw new BusinessException(ApiCode.UNAUTHORIZED, "token expired");
         }
         try {
             TokenSession session = objectMapper.readValue(raw, TokenSession.class);
             if (!String.valueOf(session.userId()).equals(claims.getSubject())
                     || !session.username().equals(claims.get("username", String.class))) {
-                throw new BusinessException(401, "invalid token");
+                throw new BusinessException(ApiCode.UNAUTHORIZED, "invalid token");
             }
             return session;
         } catch (JsonProcessingException exception) {
-            throw new BusinessException(500, "token session deserialize failed");
+            throw new BusinessException(ApiCode.INTERNAL_SERVER_ERROR, "internal server error");
         }
     }
 
@@ -76,7 +77,7 @@ public class TokenService {
             stringRedisTemplate.opsForSet().add(userTokenKey(session.userId()), session.token());
             stringRedisTemplate.expire(userTokenKey(session.userId()), ttl);
         } catch (JsonProcessingException exception) {
-            throw new BusinessException(500, "token session serialize failed");
+            throw new BusinessException(ApiCode.INTERNAL_SERVER_ERROR, "internal server error");
         }
     }
 

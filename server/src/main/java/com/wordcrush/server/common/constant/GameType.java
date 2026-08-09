@@ -1,5 +1,6 @@
 package com.wordcrush.server.common.constant;
 
+import com.wordcrush.server.common.api.ApiCode;
 import com.wordcrush.server.common.exception.BusinessException;
 import java.util.Arrays;
 
@@ -17,6 +18,6 @@ public enum GameType {
         return Arrays.stream(values())
                 .filter(item -> item.code == code)
                 .findFirst()
-                .orElseThrow(() -> new BusinessException(400, "unsupported gameType"));
+                .orElseThrow(() -> new BusinessException(ApiCode.BAD_REQUEST, "unsupported gameType"));
     }
 }
