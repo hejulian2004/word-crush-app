@@ -61,7 +61,10 @@ WordCrush deployment uses the existing relay Docker network and HTTPS entrypoint
 
 - backend container port: `8080`
 - host diagnostic binding: `127.0.0.1:18080`
+- admin web container port: `80`
+- admin host diagnostic binding: `127.0.0.1:18081`
 - public API prefix: `https://txy.hejulian.org/word-crush/`
+- public admin prefix: `https://txy.hejulian.org/word-crush-admin/`
 - MySQL and Redis are internal Compose services and are not published to the host
 
 For local Docker testing, pass `.env.example` explicitly:
@@ -110,6 +113,16 @@ Mounted files used by the app:
 - `GET /api/learning/plan`
 - `PUT /api/learning/settings/daily-target`
 - `POST /api/learning/sync`
+- `GET /api/admin/me`
+- `GET /api/admin/overview`
+- `GET /api/admin/users`
+- `PUT /api/admin/users/{id}/status`
+- `PUT /api/admin/users/{id}/password`
+- `GET /api/admin/words`
+- `POST /api/admin/words`
+- `PUT /api/admin/words/{id}`
+- `POST /api/admin/words/import` (multipart CSV)
+- `GET /api/admin/words/export`
 - `/swagger-ui/**`
 - `/api-docs/**`
 - `/actuator/**`

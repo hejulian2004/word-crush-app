@@ -44,3 +44,7 @@ server/storage/
 server/.env
 server/.env.*
 !server/.env.example
+
+# TypeScript admin build artifacts
+admin-web/node_modules/
+admin-web/dist/

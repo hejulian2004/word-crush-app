@@ -5,6 +5,12 @@ services:
       relay_internal:
         aliases:
           - wordcrush-app
+  admin:
+    networks:
+      default: {}
+      relay_internal:
+        aliases:
+          - wordcrush-admin
 
 networks:
   relay_internal:

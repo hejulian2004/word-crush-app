@@ -8,6 +8,7 @@ WordCrush 是一个基于 Android + Jetpack Compose 的英语单词学习与配�
 
 - `app/`：Android 客户端源码。
 - `server/`：Spring Boot 后端、数据库脚本、词库和 Docker Compose 文件。
+- `admin-web/`：TypeScript + React 词库运营管理端，使用 Nginx 容器部署。
 - `docs/`：客户端与后端接口文档。
 
 ## 技术栈
@@ -127,3 +128,13 @@ docker compose --env-file .env.example -p wordcrush-local up -d --build
 ```
 
 后端部署和远程 Docker 操作以 [word-crush-deployment Skill](./.agents/skills/word-crush-deployment/SKILL.md) 为准。
+
+## Web 管理端
+
+管理端提供管理员登录、用户启停与密码重置、词条搜索/编辑/新增、CSV 词表导入导出以及概览统计。开发环境启动后访问 `http://127.0.0.1:18081`；生产 Compose 通过 Caddy 暴露在 `/word-crush-admin/`。
+
+```powershell
+docker compose --env-file server/.env.example -f server/docker-compose.yml -p wordcrush-local up -d --build
+```
+
+详细的 CSV 格式和 Vite 开发方式见 [admin-web/README.md](./admin-web/README.md)。

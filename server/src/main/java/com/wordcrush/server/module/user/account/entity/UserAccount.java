@@ -24,6 +24,9 @@ import org.hibernate.type.SqlTypes;
 @Table(name = "users")
 public class UserAccount extends BaseEntity {
 
+    public static final String ROLE_USER = "USER";
+    public static final String ROLE_ADMIN = "ADMIN";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -37,6 +40,9 @@ public class UserAccount extends BaseEntity {
     @JdbcTypeCode(SqlTypes.TINYINT)
     @Column(nullable = false)
     private Integer status = 1;
+
+    @Column(nullable = false, length = 16)
+    private String role = ROLE_USER;
 
     @OneToMany(mappedBy = "user")
     private List<GameRecord> gameRecords = new ArrayList<>();

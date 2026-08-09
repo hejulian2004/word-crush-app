@@ -26,6 +26,9 @@ public class UserService {
     public UserResponse login(LoginRequest request) {
         UserAccount user = userAccountRepository.findByUsername(request.username())
                 .orElseThrow(() -> new BusinessException(ApiCode.UNAUTHORIZED, "invalid username or password"));
+        if (!Integer.valueOf(1).equals(user.getStatus())) {
+            throw new BusinessException(ApiCode.FORBIDDEN, "account is disabled");
+        }
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new BusinessException(ApiCode.UNAUTHORIZED, "invalid username or password");
         }
@@ -50,6 +53,7 @@ public class UserService {
         user.setUsername(username);
         user.setPasswordHash(passwordEncoder.encode(request.password()));
         user.setStatus(1);
+        user.setRole(UserAccount.ROLE_USER);
         userAccountRepository.save(user);
         return toUserResponse(user, tokenService.issueToken(user));
     }

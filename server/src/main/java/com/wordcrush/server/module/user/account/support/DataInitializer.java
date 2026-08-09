@@ -21,14 +21,20 @@ public class DataInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        userAccountRepository.findByUsername(bootstrapAdminProperties.getUsername())
+        UserAccount admin = userAccountRepository.findByUsername(bootstrapAdminProperties.getUsername())
                 .orElseGet(() -> {
-                    UserAccount admin = new UserAccount();
-                    admin.setUsername(bootstrapAdminProperties.getUsername());
-                    admin.setPasswordHash(passwordEncoder.encode(bootstrapAdminProperties.getPassword()));
-                    admin.setStatus(1);
-                    log.info("Bootstrap admin account created: {}", admin.getUsername());
-                    return userAccountRepository.save(admin);
+                    UserAccount created = new UserAccount();
+                    created.setUsername(bootstrapAdminProperties.getUsername());
+                    created.setPasswordHash(passwordEncoder.encode(bootstrapAdminProperties.getPassword()));
+                    created.setStatus(1);
+                    created.setRole(UserAccount.ROLE_ADMIN);
+                    log.info("Bootstrap admin account created: {}", created.getUsername());
+                    return userAccountRepository.save(created);
                 });
+        if (!UserAccount.ROLE_ADMIN.equals(admin.getRole())) {
+            admin.setRole(UserAccount.ROLE_ADMIN);
+            userAccountRepository.save(admin);
+            log.info("Bootstrap account promoted to admin: {}", admin.getUsername());
+        }
     }
 }
