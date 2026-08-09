@@ -1,0 +1,25 @@
+{$RELAY_PUBLIC_DOMAIN} {
+  encode zstd gzip
+
+  header {
+    -Server
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "DENY"
+    Referrer-Policy "no-referrer"
+    Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+  }
+
+  handle_path /word-crush/* {
+    reverse_proxy wordcrush-app:8080
+  }
+
+  handle {
+    reverse_proxy relay:8080
+  }
+}
+
+{$RELAY_PUBLIC_DOMAIN}:51821 {
+  encode zstd gzip
+  reverse_proxy host.docker.internal:51821
+}

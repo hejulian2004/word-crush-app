@@ -1,0 +1,12 @@
+services:
+  app:
+    networks:
+      default: {}
+      relay_internal:
+        aliases:
+          - wordcrush-app
+
+networks:
+  relay_internal:
+    external: true
+    name: relay_relay_internal

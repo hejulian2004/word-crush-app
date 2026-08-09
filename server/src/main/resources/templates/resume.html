@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>何聚敛 - 简历</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --subtext: #4b5563;
+      --line: #e5e7eb;
+      --accent: #2563eb;
+      --tag: #eff6ff;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      --max-width: 980px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", Arial, sans-serif;
+      background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    a,
+    a:visited,
+    a:hover,
+    a:active {
+      color: inherit;
+      text-decoration: underline;
+    }
+
+    .container {
+      max-width: var(--max-width);
+      margin: 32px auto;
+      padding: 0 20px 40px;
+    }
+
+    .resume {
+      background: var(--card);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      border: 1px solid rgba(229, 231, 235, 0.9);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr 140px;
+      gap: 24px;
+      padding: 32px;
+      background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+      border-bottom: 1px solid var(--line);
+      align-items: center;
+    }
+
+    .name {
+      font-size: 34px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      margin: 0 0 10px;
+    }
+
+    .meta {
+      color: var(--subtext);
+      font-size: 15px;
+      margin: 6px 0;
+    }
+
+    .meta span {
+      display: inline-block;
+      margin-right: 14px;
+    }
+
+    .avatar {
+      width: 140px;
+      height: 180px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #dbeafe, #e5e7eb);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+      font-size: 14px;
+      border: 1px solid var(--line);
+    }
+
+    .body {
+      padding: 10px 32px 32px;
+    }
+
+    .section {
+      padding: 22px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .section-title {
+      margin: 0 0 18px;
+      font-size: 22px;
+      font-weight: 700;
+      color: #111827;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title::before {
+      content: "";
+      width: 6px;
+      height: 22px;
+      border-radius: 999px;
+      background: var(--accent);
+      display: inline-block;
+    }
+
+    .item {
+      margin-bottom: 20px;
+    }
+
+    .item:last-child {
+      margin-bottom: 0;
+    }
+
+    .item-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: baseline;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+
+    .item-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .item-subtitle {
+      color: var(--subtext);
+      font-size: 15px;
+      margin-bottom: 8px;
+    }
+
+    .date {
+      color: var(--accent);
+      font-size: 14px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    ul {
+      margin: 8px 0 0 20px;
+      padding: 0;
+    }
+
+    li {
+      margin-bottom: 6px;
+      color: #374151;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .tag {
+      background: var(--tag);
+      color: #1d4ed8;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 14px;
+      border: 1px solid #dbeafe;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 22px;
+    }
+
+    .skill-group {
+      background: #fafafa;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .skill-group h4 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .skill-group p {
+      margin: 0;
+      color: #4b5563;
+      font-size: 14px;
+    }
+
+    .highlight {
+      color: #111827;
+      font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+      .hero {
+        grid-template-columns: 1fr;
+      }
+
+      .avatar {
+        width: 110px;
+        height: 140px;
+      }
+
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+
+      .body, .hero {
+        padding-left: 20px;
+        padding-right: 20px;
+      }
+
+      .name {
+        font-size: 28px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <main class="resume">
+      <section class="hero">
+        <div>
+          <h1 class="name">何聚敛</h1>
+          <p class="meta">
+            <span>电话：18767834524</span>
+            <span>邮箱：2949282402@qq.com</span>
+          </p>
+          <p class="meta">
+            <span>地点：广州</span>
+            <span>求职方向：后端开发 / Java开发 / 系统工程</span>
+          </p>
+          <div class="tags">
+            <span class="tag">GPA 3.94 / 4.00</span>
+            <span class="tag">专业排名 2 / 171</span>
+            <span class="tag">已保送深圳大学</span>
+          </div>
+        </div>
+        <img src="/images/avatar.jpg" alt="证件照" class="avatar">
+      </section>
+
+      <div class="body">
+        <section class="section">
+          <h2 class="section-title">教育经历</h2>
+          <div class="item">
+            <div class="item-head">
+              <div class="item-title"><a href="https://www.gdufs.edu.cn/">广东外语外贸大学</a> · 软件工程本科 · 信息科学与技术学院</div>
+              <div class="date">2022.08 - 2026.07</div>
+            </div>
+            <div class="item-subtitle"> GPA <span class="highlight">3.94</span>/4.00 ｜ 专业排名 <span class="highlight">2</span>/171 ｜ 现已保送至<a href="https://csse.szu.edu.cn/" class="highlight">深圳大学计算机与软件学院</a></div>
+            <ul>
+              <li>奖项与荣誉：校一等奖学金（2023、2024）、国家励志奖学金、校级云阁奖学金、优秀共青团员、优秀学生干部、优秀学生骨干。</li>
+              <li>主修课程：高等数学（100）、程序设计（96）、操作系统（96）、数据结构（95）、算法（95）、Java（94）、数据库（91）。</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">项目经历</h2>
+
+          <div class="item">
+            <div class="item-head">
+              <div class="item-title"><a href="https://github.com/2949282402/word-crush-server">WordCrush Server</a>｜ Java 后端开发与部署</div>
+              <div class="date">2026.02 - 2026.04</div>
+            </div>
+            <div class="item-subtitle">技术栈：Java 17 / Spring Boot / Spring Security / Spring Data JPA / MySQL / Redis / Flyway / JWT / Docker Compose / Nginx</div>
+            <ul>
+              <li>基于 Spring Boot 3 设计并实现 RESTful API，完成用户认证、排行榜、游戏记录等核心业务模块开发，支持客户端与服务端完整业务链路联调。</li>
+              <li>设计 JWT + Redis 的认证与会话管理机制，将 token 会话存储于 Redis，并维护用户维度 token 索引，实现单设备登录控制、密码修改后 token 批量失效及受保护接口鉴权。</li>
+              <li>设计 MySQL 用户表、游戏记录表及明细表等核心数据模型，结合 Flyway 管理数据库版本迁移，保证多环境下数据库结构一致性与可演进性。</li>
+              <li>设计统一响应结构与全局异常处理机制，提升接口一致性与后端服务可维护性。</li>
+              <li>使用 Docker Compose 编排应用、MySQL、Redis 服务，完成系统在阿里云 ECS 上部署，并通过 Nginx 配置反向代理与 HTTPS，实现公网访问与服务转发。</li>
+            </ul>
+          </div>
+
+          <div class="item">
+            <div class="item-head">
+              <div class="item-title"><a href="https://github.com/2949282402/new_model">AI生成视频检测</a> ｜ AI系统工程项目</div>
+              <div class="date">2026.02 - 2026.03</div>
+            </div>
+            <div class="item-subtitle">技术栈：Python / PyTorch / Spring Boot / FFmpeg / HTML / CSS</div>
+            <ul>
+              <li>围绕 AI 生成视频检测任务，独立完成模型训练、推理流程开发及 Web 原型系统实现。</li>
+              <li>基于 PyTorch 设计时空频域融合检测框架，在 ResNet50 空间分支中引入 HFRI 和 FCL 增强频域特征建模，结合 FlowFormer++ 提取时序运动特征，并通过交叉注意力实现时空特征融合。</li>
+              <li>训练侧完成数据增强、Focal Loss、标签平滑、混合精度训练、checkpoint 管理与视频级概率聚合；推理侧实现视频抽帧、多间隔时序建模与注意力热力图可视化。</li>
+              <li>基于 Spring Boot 搭建检测原型系统，实现视频上传、视频转码、参数配置、Python 推理调用、SSE 实时进度展示、结果展示和历史记录管理。</li>
+              <li>项目在 22048 个测试视频上取得 AUC 0.9547、ACC 87.99%，较 ResNet50 基线提升 4.48%。</li>
+            </ul>
+          </div>
+
+          <div class="item">
+            <div class="item-head">
+              <div class="item-title"><a href="https://github.com/2949282402/hejulian-web">HeJulian Blog 智能博客系统</a> ｜ 全栈开发 / RAG 知识库工程</div>
+              <div class="date">2026.03 - 2026.04</div>
+            </div>
+            <div class="item-subtitle">技术栈：Vue 3 / Vite / Element Plus / Spring Boot 3 / MyBatis / MySQL / Redis / JWT / Docker Compose / Qdrant / SSE / RAG</div>
+            <ul>
+              <li>独立设计并实现个人博客全栈系统，完成公开站点、后台管理、登录鉴权、文章/分类/标签/评论管理等模块开发，形成内容发布、检索、运营一体化平台。</li>
+              <li>基于 Spring Boot 3 + MyBatis 构建后端服务，设计文章、分类、标签、评论等核心数据模型，结合 JWT + Redis 实现后台认证鉴权、会话控制与受保护接口访问。</li>
+              <li>实现基于已发布博客内容的 RAG 知识问答能力，打通文档入库、向量检索、上下文构造与流式回答链路，前端通过 fetch + SSE 解析实现实时输出交互体验。</li>
+              <li>使用 Docker Compose 编排前端、后端、MySQL、Redis、Qdrant 等服务，支持本地一键启动与多组件协同联调，具备完整工程化部署能力。</li>
+              <li>重构前端公共站点与后台控制台 UI，沉淀统一设计 token、响应式布局与管理工作台交互模式，提升系统一致性、可维护性与产品完成度。</li>
+            </ul>
+          </div>
+
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">实习经历</h2>
+          <div class="item">
+            <div class="item-head">
+              <div class="item-title"><a href="https://www.37wan.net/">三七互娱</a> ｜ Android开发工程师 ｜ 37手游技术部客户端组</div>
+              <div class="date">2025.02 - 2025.09</div>
+            </div>
+            <ul>
+              <li>参与多渠道 SDK 接入与升级（小米、OPPO、VIVO、荣耀、UC、应用宝），负责登录流程联调、兼容性问题排查与稳定性优化，登录成功率 &gt;95%，崩溃率 &lt;0.25%。</li>
+              <li>基于数据看板分析转化率、崩溃率等关键指标，结合 pid/gid 与堆栈日志进行问题定位与修复推进，具备线上问题分析与定位能力。</li>
+              <li>基于 Frida 框架开发自动化检测工具，实现 Android 应用运行时隐私合规检测，提升测试效率并减少人工排查成本。</li>
+              <li>参与 Android/iOS 平台问题排查与修复，能够协同多端定位复杂线上问题，推动问题闭环处理。</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">荣誉奖项</h2>
+          <div class="item">
+            <ul>
+              <li>2024年团体程序设计天梯赛：团队国家一等奖、个人国家三等奖</li>
+              <li>2024年中国大学生程序设计竞赛（广东省赛区）：广东省银奖</li>
+              <li>2024年中国大学生计算机设计大赛：国家三等奖</li>
+              <li>2024年中国大学生数学建模大赛：广东省二等奖</li>
+              <li>2024年粤港澳金融数学建模大赛：国家二等奖</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">技能</h2>
+          <div class="grid-2">
+            <div class="skill-group">
+              <h4>编程语言</h4>
+              <p>熟悉 Java，了解 Python、C++。</p>
+            </div>
+            <div class="skill-group">
+              <h4>后端开发</h4>
+              <p>熟悉 Spring Boot、Spring Security、Spring Data JPA，具备 RESTful API 开发、认证鉴权与接口联调经验。</p>
+            </div>
+            <div class="skill-group">
+              <h4>数据存储</h4>
+              <p>熟悉 MySQL、Redis，了解数据库表设计、缓存与会话管理。</p>
+            </div>
+            <div class="skill-group">
+              <h4>工程部署</h4>
+              <p>熟悉 Linux、Git、Docker Compose、Nginx，具备服务部署、反向代理与 HTTPS 配置经验。</p>
+            </div>
+            <div class="skill-group">
+              <h4>其他能力</h4>
+              <p>具备一定 Python 工程能力，可完成脚本开发、推理流程搭建与服务集成。</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">社团和组织经历</h2>
+          <div class="item">
+            <div class="item-head">
+              <div class="item-title">广东外语外贸大学2023级朋辈导师</div>
+              <div class="date">2023.06 - 2024.06</div>
+            </div>
+            <div class="item-subtitle">荣誉：先进个人</div>
+          </div>
+          <div class="item">
+            <div class="item-head">
+              <div class="item-title">班长</div>
+              <div class="date">2022.08 - 2023.08</div>
+            </div>
+            <div class="item-subtitle">荣誉：优秀学生干部</div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

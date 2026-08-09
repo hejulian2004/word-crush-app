@@ -2,6 +2,14 @@
 
 WordCrush 是一个基于 Android + Jetpack Compose 的英语单词学习与配对闯关应用，包含单词本、闯关模式、计时模式、排行榜、游戏记录、头像上传和每日学习计划。
 
+## 仓库布局
+
+当前客户端和服务端由同一个 Git 仓库维护：
+
+- `app/`：Android 客户端源码。
+- `server/`：Spring Boot 后端、数据库脚本、词库和 Docker Compose 文件。
+- `docs/`：客户端与后端接口文档。
+
 ## 技术栈
 
 - Kotlin / Jetpack Compose / Material 3
@@ -109,3 +117,13 @@ https://txy.hejulian.org/word-crush/
 ```
 
 调试 APK：`app/build/outputs/apk/debug/app-debug.apk`。
+
+后端构建：
+
+```powershell
+cd server
+.\mvnw.cmd -q package
+docker compose --env-file .env.example -p wordcrush-local up -d --build
+```
+
+后端部署和远程 Docker 操作以 [word-crush-deployment Skill](./.agents/skills/word-crush-deployment/SKILL.md) 为准。

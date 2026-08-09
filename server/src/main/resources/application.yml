@@ -1,0 +1,51 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  profiles:
+    default: dev
+  application:
+    name: word-crush-server
+  datasource:
+    url: ${MYSQL_URL:jdbc:mysql://localhost:3306/word_crush?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      timeout: 3s
+  jackson:
+    default-property-inclusion: non_null
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:WordCrushJwtSecretKeyForResumeBuild1234567890}
+      expiration-hours: ${JWT_EXPIRATION_HOURS:168}
+  bootstrap:
+    admin:
+      username: ${BOOTSTRAP_ADMIN_USERNAME:admin}
+      password: ${BOOTSTRAP_ADMIN_PASSWORD:123456}
+  token:
+    prefix: ${REDIS_TOKEN_PREFIX:wordcrush:auth:token:}
+    user-prefix: ${REDIS_USER_TOKEN_PREFIX:wordcrush:auth:user:}
+  ranking:
+    prefix: ${REDIS_RANKING_PREFIX:wordcrush:ranking:}
+    ttl: ${REDIS_RANKING_TTL:5m}
+  avatar:
+    cache-prefix: ${REDIS_AVATAR_PREFIX:wordcrush:avatar:}
+    cache-ttl: ${REDIS_AVATAR_TTL:30d}

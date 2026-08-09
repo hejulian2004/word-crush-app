@@ -1,0 +1,24 @@
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+spring:
+  docker:
+    compose:
+      enabled: false
+  web:
+    resources:
+      static-locations: ${STATIC_LOCATIONS:file:/app/external-resume/,file:/app/external-static/,classpath:/templates/,classpath:/static/}
+  jpa:
+    show-sql: false
