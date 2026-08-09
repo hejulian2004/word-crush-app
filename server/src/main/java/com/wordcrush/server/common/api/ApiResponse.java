@@ -1,6 +1,7 @@
 package com.wordcrush.server.common.api;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.wordcrush.api.ApiCode;
 
 @JsonInclude(JsonInclude.Include.ALWAYS)
 public record ApiResponse<T>(int code, String msg, T data) {

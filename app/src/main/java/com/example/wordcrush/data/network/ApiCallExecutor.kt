@@ -1,6 +1,7 @@
 package com.example.wordcrush.data.network
 
 import com.example.wordcrush.data.model.ApiResponse
+import com.wordcrush.api.ApiCode
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import java.io.IOException
@@ -35,7 +36,7 @@ class ApiCallExecutor @Inject constructor(
             throw NetworkException.Serialization(error)
         }
 
-        if (!response.isSuccessful || response.code() != 200) {
+        if (!response.isSuccessful || response.code() != ApiCode.SUCCESS.value()) {
             throw response.toNetworkException()
         }
 

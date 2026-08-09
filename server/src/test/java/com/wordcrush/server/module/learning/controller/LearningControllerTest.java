@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wordcrush.api.ApiCode;
 import com.wordcrush.server.config.SecurityConfig;
 import com.wordcrush.server.module.learning.dto.DailyTargetRequest;
 import com.wordcrush.server.module.learning.dto.LearningSyncRequest;
@@ -81,7 +82,7 @@ class LearningControllerTest {
                         .param("query", "abandon")
                         .param("mastered", "false"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value(ApiCode.SUCCESS.value()))
                 .andExpect(jsonPath("$.data.items[0].english").value("abandon"))
                 .andExpect(jsonPath("$.data.items[0].masterCount").value(2));
     }

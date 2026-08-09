@@ -1,6 +1,6 @@
 package com.wordcrush.server.module.user.account.service;
 
-import com.wordcrush.server.common.api.ApiCode;
+import com.wordcrush.api.ApiCode;
 import com.wordcrush.server.common.exception.BusinessException;
 import com.wordcrush.server.module.user.account.dto.LoginRequest;
 import com.wordcrush.server.module.user.account.dto.RegisterRequest;

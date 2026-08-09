@@ -9,7 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.wordcrush.server.common.api.ApiCode;
+import com.wordcrush.api.ApiCode;
 import com.wordcrush.server.common.exception.BusinessException;
 import com.wordcrush.server.config.SecurityConfig;
 import com.wordcrush.server.module.user.account.dto.LoginRequest;
@@ -59,7 +59,7 @@ class UserAccountControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new LoginRequest("admin", "123456"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value(ApiCode.SUCCESS.value()))
                 .andExpect(jsonPath("$.msg").value("success"))
                 .andExpect(jsonPath("$.data.username").value("admin"))
                 .andExpect(jsonPath("$.data.uid").value("1"));
@@ -87,7 +87,7 @@ class UserAccountControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new LoginRequest("admin", "123456"))))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.code").value(500))
+                .andExpect(jsonPath("$.code").value(ApiCode.INTERNAL_SERVER_ERROR.value()))
                 .andExpect(jsonPath("$.msg").value("internal server error"))
                 .andExpect(jsonPath("$.data").value(nullValue()));
     }
@@ -109,7 +109,7 @@ class UserAccountControllerTest {
 
         mockMvc.perform(get("/api/user/checkToken"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value(ApiCode.SUCCESS.value()))
                 .andExpect(jsonPath("$.data.username").value("admin"));
     }
 }

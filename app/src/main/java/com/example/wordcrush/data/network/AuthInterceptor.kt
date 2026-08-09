@@ -1,6 +1,7 @@
 package com.example.wordcrush.data.network
 
 import com.example.wordcrush.data.session.SessionManager
+import com.wordcrush.api.ApiCode
 import okhttp3.Interceptor
 import okhttp3.Response
 import javax.inject.Inject
@@ -19,7 +20,7 @@ class AuthInterceptor @Inject constructor(
         }.build()
 
         val response = chain.proceed(request)
-        if (response.code == 401 && !token.isNullOrBlank()) {
+        if (response.code == ApiCode.UNAUTHORIZED.value() && !token.isNullOrBlank()) {
             sessionManager.invalidateFromNetwork()
         }
         return response

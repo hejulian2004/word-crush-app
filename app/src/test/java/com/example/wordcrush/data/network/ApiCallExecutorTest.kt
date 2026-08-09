@@ -1,6 +1,7 @@
 package com.example.wordcrush.data.network
 
 import com.example.wordcrush.data.model.ApiResponse
+import com.wordcrush.api.ApiCode
 import com.google.gson.Gson
 import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaType
@@ -15,10 +16,10 @@ class ApiCallExecutorTest {
     @Test
     fun executeReturnsDataFromStandardResponse() = runBlocking {
         val payload = executor.execute {
-            Response.success(ApiResponse(code = 200, msg = "success", data = "ok"))
+            Response.success(ApiResponse(code = ApiCode.SUCCESS.value(), msg = "success", data = "ok"))
         }
 
-        assertEquals(200, payload.code)
+        assertEquals(ApiCode.SUCCESS.value(), payload.code)
         assertEquals("ok", payload.data)
         assertEquals("success", payload.message)
     }
@@ -27,12 +28,12 @@ class ApiCallExecutorTest {
     fun executeMapsBusinessEnvelopeFailure() = runBlocking {
         try {
             executor.execute {
-                Response.success(ApiResponse<String>(code = 400, msg = "invalid request"))
+                Response.success(ApiResponse<String>(code = ApiCode.BAD_REQUEST.value(), msg = "invalid request"))
             }
             throw AssertionError("Expected NetworkException.Server")
         } catch (error: NetworkException.Server) {
-            assertEquals(200, error.httpStatusCode)
-            assertEquals(400, error.code)
+            assertEquals(ApiCode.SUCCESS.value(), error.httpStatusCode)
+            assertEquals(ApiCode.BAD_REQUEST.value(), error.code)
             assertEquals("invalid request", error.detail)
         }
     }
@@ -42,15 +43,15 @@ class ApiCallExecutorTest {
         try {
             executor.execute {
                 Response.error<ApiResponse<String>>(
-                    401,
-                    "{\"code\":401,\"msg\":\"invalid token\"}"
+                    ApiCode.UNAUTHORIZED.value(),
+                    """{"code":${ApiCode.UNAUTHORIZED.value()},"msg":"invalid token"}"""
                         .toResponseBody("application/json".toMediaType())
                 )
             }
             throw AssertionError("Expected NetworkException.Server")
         } catch (error: NetworkException.Server) {
-            assertEquals(401, error.httpStatusCode)
-            assertEquals(401, error.code)
+            assertEquals(ApiCode.UNAUTHORIZED.value(), error.httpStatusCode)
+            assertEquals(ApiCode.UNAUTHORIZED.value(), error.code)
             assertEquals("invalid token", error.detail)
         }
     }
@@ -58,10 +59,10 @@ class ApiCallExecutorTest {
     @Test
     fun executeMapsEmptySuccessfulDataWithoutRequiringData() = runBlocking {
         val payload = executor.execute {
-            Response.success(ApiResponse<Unit>(code = 200, msg = "success", data = null))
+            Response.success(ApiResponse<Unit>(code = ApiCode.SUCCESS.value(), msg = "success", data = null))
         }
 
-        assertEquals(200, payload.code)
+        assertEquals(ApiCode.SUCCESS.value(), payload.code)
         assertEquals("success", payload.message)
         assertEquals(null, payload.data)
     }
@@ -71,14 +72,14 @@ class ApiCallExecutorTest {
         try {
             executor.execute {
                 Response.error<ApiResponse<String>>(
-                    503,
+                    ApiCode.SERVICE_UNAVAILABLE.value(),
                     "upstream unavailable".toResponseBody("text/plain".toMediaType())
                 )
             }
             throw AssertionError("Expected NetworkException.Server")
         } catch (error: NetworkException.Server) {
-            assertEquals(503, error.httpStatusCode)
-            assertEquals(503, error.code)
+            assertEquals(ApiCode.SERVICE_UNAVAILABLE.value(), error.httpStatusCode)
+            assertEquals(ApiCode.SERVICE_UNAVAILABLE.value(), error.code)
             assertEquals("upstream unavailable", error.detail)
         }
     }

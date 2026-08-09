@@ -1,7 +1,7 @@
 package com.wordcrush.server.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.wordcrush.server.common.api.ApiCode;
+import com.wordcrush.api.ApiCode;
 import com.wordcrush.server.common.api.ApiResponseWriter;
 import com.wordcrush.server.common.exception.BusinessException;
 import jakarta.servlet.FilterChain;

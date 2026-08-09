@@ -2,7 +2,7 @@ package com.wordcrush.server.security;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.wordcrush.server.common.api.ApiCode;
+import com.wordcrush.api.ApiCode;
 import com.wordcrush.server.common.exception.BusinessException;
 import com.wordcrush.server.config.JwtProperties;
 import com.wordcrush.server.module.user.account.entity.UserAccount;

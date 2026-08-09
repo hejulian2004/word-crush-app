@@ -1,6 +1,6 @@
 package com.wordcrush.server.common.exception;
 
-import com.wordcrush.server.common.api.ApiCode;
+import com.wordcrush.api.ApiCode;
 import lombok.Getter;
 
 @Getter

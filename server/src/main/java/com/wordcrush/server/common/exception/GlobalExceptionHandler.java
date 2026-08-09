@@ -1,6 +1,6 @@
 package com.wordcrush.server.common.exception;
 
-import com.wordcrush.server.common.api.ApiCode;
+import com.wordcrush.api.ApiCode;
 import com.wordcrush.server.common.api.ApiResponse;
 import com.wordcrush.server.common.api.ApiResponseWriter;
 import jakarta.validation.ConstraintViolationException;

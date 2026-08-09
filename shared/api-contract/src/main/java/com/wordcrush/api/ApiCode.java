@@ -1,9 +1,7 @@
-package com.wordcrush.server.common.api;
-
-import org.springframework.http.HttpStatus;
+package com.wordcrush.api;
 
 /**
- * HTTP-aligned response codes used by the JSON API.
+ * HTTP-aligned response codes shared by the Android client and backend.
  */
 public enum ApiCode {
     SUCCESS(200),
@@ -14,7 +12,8 @@ public enum ApiCode {
     METHOD_NOT_ALLOWED(405),
     CONFLICT(409),
     UNSUPPORTED_MEDIA_TYPE(415),
-    INTERNAL_SERVER_ERROR(500);
+    INTERNAL_SERVER_ERROR(500),
+    SERVICE_UNAVAILABLE(503);
 
     private final int value;
 
@@ -24,9 +23,5 @@ public enum ApiCode {
 
     public int value() {
         return value;
-    }
-
-    public HttpStatus httpStatus() {
-        return HttpStatus.valueOf(value);
     }
 }

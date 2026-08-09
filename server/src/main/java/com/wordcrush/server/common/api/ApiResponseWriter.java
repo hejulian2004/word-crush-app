@@ -1,6 +1,7 @@
 package com.wordcrush.server.common.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wordcrush.api.ApiCode;
 import java.io.IOException;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
@@ -13,7 +14,7 @@ public final class ApiResponseWriter {
     }
 
     public static ResponseEntity<ApiResponse<Void>> entity(ApiCode code, String message) {
-        return ResponseEntity.status(code.httpStatus()).body(ApiResponse.fail(code, message));
+        return ResponseEntity.status(code.value()).body(ApiResponse.fail(code, message));
     }
 
     public static void write(

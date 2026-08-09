@@ -1,5 +1,6 @@
 ﻿package com.example.wordcrush.data.model
 
+import com.wordcrush.api.ApiCode
 import com.google.gson.annotations.SerializedName
 
 /**
@@ -13,7 +14,7 @@ data class ApiResponse<T>(
     @SerializedName("data")
     val data: T? = null
 ) {
-    fun isSuccess(): Boolean = code == 200
+    fun isSuccess(): Boolean = code == ApiCode.SUCCESS.value()
 }
 
 /**

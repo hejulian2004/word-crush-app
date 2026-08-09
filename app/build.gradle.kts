@@ -13,6 +13,12 @@ android {
     namespace = "com.example.wordcrush"
     compileSdk = 36
 
+    sourceSets {
+        getByName("main") {
+            java.srcDir("../shared/api-contract/src/main/java")
+        }
+    }
+
     defaultConfig {
         applicationId = "com.example.wordcrush"
         minSdk = 26

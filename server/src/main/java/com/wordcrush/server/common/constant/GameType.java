@@ -1,6 +1,6 @@
 package com.wordcrush.server.common.constant;
 
-import com.wordcrush.server.common.api.ApiCode;
+import com.wordcrush.api.ApiCode;
 import com.wordcrush.server.common.exception.BusinessException;
 import java.util.Arrays;
 

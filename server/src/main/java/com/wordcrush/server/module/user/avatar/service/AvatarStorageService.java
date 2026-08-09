@@ -1,6 +1,6 @@
 package com.wordcrush.server.module.user.avatar.service;
 
-import com.wordcrush.server.common.api.ApiCode;
+import com.wordcrush.api.ApiCode;
 import com.wordcrush.server.common.exception.BusinessException;
 import com.wordcrush.server.module.user.account.repository.UserAccountRepository;
 import java.io.IOException;

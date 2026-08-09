@@ -44,8 +44,8 @@ services:
 
   app:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: server/Dockerfile
     depends_on:
       mysql:
         condition: service_healthy

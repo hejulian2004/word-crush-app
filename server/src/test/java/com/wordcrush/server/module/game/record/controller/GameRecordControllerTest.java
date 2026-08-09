@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wordcrush.api.ApiCode;
 import com.wordcrush.server.config.SecurityConfig;
 import com.wordcrush.server.module.game.ranking.dto.RankingRequest;
 import com.wordcrush.server.module.game.ranking.response.RankingItemResponse;
@@ -49,7 +50,7 @@ class GameRecordControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new RankingRequest(0, 10))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value(ApiCode.SUCCESS.value()))
                 .andExpect(jsonPath("$.data[0].username").value("alice"))
                 .andExpect(jsonPath("$.data[0].score").value(25));
     }

@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wordcrush.api.ApiCode;
 import com.wordcrush.server.config.SecurityConfig;
 import com.wordcrush.server.module.game.ranking.service.RankingService;
 import com.wordcrush.server.module.game.record.dto.SaveGameRecordRequest;
@@ -58,7 +59,7 @@ class GameRecordControllerSecurityTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(401))
+                .andExpect(jsonPath("$.code").value(ApiCode.UNAUTHORIZED.value()))
                 .andExpect(jsonPath("$.msg").value("token must not be blank"));
     }
 
@@ -69,7 +70,7 @@ class GameRecordControllerSecurityTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new UsernameRequest("alice"))))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(401));
+                .andExpect(jsonPath("$.code").value(ApiCode.UNAUTHORIZED.value()));
     }
 
     @Test
@@ -81,7 +82,7 @@ class GameRecordControllerSecurityTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new UsernameRequest("bob"))))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(403))
+                .andExpect(jsonPath("$.code").value(ApiCode.FORBIDDEN.value()))
                 .andExpect(jsonPath("$.msg").value("cannot operate on another user's data"));
     }
 
@@ -95,7 +96,7 @@ class GameRecordControllerSecurityTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new UsernameRequest("alice"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value(ApiCode.SUCCESS.value()))
                 .andExpect(jsonPath("$.data").isArray());
 
         verify(gameRecordService).getAllGameRecords(new UsernameRequest("alice"));
