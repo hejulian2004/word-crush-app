@@ -26,6 +26,7 @@ object DatabaseModule {
             "word-crush"
         )
             .fallbackToDestructiveMigration(true)
+            .fallbackToDestructiveMigrationOnDowngrade(true)
             .build()
     }
 

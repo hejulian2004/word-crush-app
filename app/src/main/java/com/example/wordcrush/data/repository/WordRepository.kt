@@ -44,7 +44,7 @@ class WordRepository @Inject constructor(
                 english = remote.english
                 pronunciation = remote.pronunciation
                 chinese = remote.chinese
-                setMaster(false)
+                isMaster = false
                 masterCount = 0
             }
         }
@@ -71,7 +71,7 @@ class WordRepository @Inject constructor(
         val changed = progress.mapNotNull { remote ->
             wordDao.getWordById(remote.wordId)?.apply {
                 masterCount = remote.masterCount.coerceIn(0, AppConstants.Learning.REQUIRED_CORRECT_MATCHES)
-                setMaster(remote.mastered || masterCount >= AppConstants.Learning.REQUIRED_CORRECT_MATCHES)
+                isMaster = remote.mastered || masterCount >= AppConstants.Learning.REQUIRED_CORRECT_MATCHES
             }
         }
         if (changed.isNotEmpty()) {
@@ -113,10 +113,10 @@ class WordRepository @Inject constructor(
     suspend fun updateWordMastered(wordId: Int, isMastered: Boolean): WordItem? = withContext(Dispatchers.IO) {
         val entity = wordDao.getWordById(wordId) ?: return@withContext null
         val targetMasterCount = if (isMastered) AppConstants.Learning.REQUIRED_CORRECT_MATCHES else 0
-        if (entity.isMaster() == isMastered && entity.masterCount == targetMasterCount) {
+        if (entity.isMaster == isMastered && entity.masterCount == targetMasterCount) {
             return@withContext updateCachedWord(entity.toWordItem())
         }
-        entity.setMaster(isMastered)
+        entity.isMaster = isMastered
         entity.masterCount = targetMasterCount
         wordDao.update(entity)
         updateCachedWord(
@@ -129,11 +129,11 @@ class WordRepository @Inject constructor(
         val entity = wordDao.getWordById(wordId) ?: return@withContext null
         val newCount = (entity.masterCount + 1).coerceAtMost(AppConstants.Learning.REQUIRED_CORRECT_MATCHES)
         val shouldBeMastered = newCount >= AppConstants.Learning.REQUIRED_CORRECT_MATCHES
-        if (entity.masterCount == newCount && entity.isMaster() == shouldBeMastered) {
+        if (entity.masterCount == newCount && entity.isMaster == shouldBeMastered) {
             return@withContext updateCachedWord(entity.toWordItem())
         }
         entity.masterCount = newCount
-        entity.setMaster(shouldBeMastered)
+        entity.isMaster = shouldBeMastered
         wordDao.update(entity)
         updateCachedWord(entity.toWordItem())
     }
@@ -149,10 +149,10 @@ class WordRepository @Inject constructor(
         }
 
         val changedEntities = updatedEntities.filter { entity ->
-            entity.masterCount != 0 || entity.isMaster()
+            entity.masterCount != 0 || entity.isMaster
         }.onEach { entity ->
             entity.masterCount = 0
-            entity.setMaster(false)
+            entity.isMaster = false
         }
         if (changedEntities.isEmpty()) {
             return@withContext
@@ -237,10 +237,10 @@ class WordRepository @Inject constructor(
         }
 
         val changedEntities = entities.filter { entity ->
-            entity.masterCount != 0 || entity.isMaster()
+            entity.masterCount != 0 || entity.isMaster
         }.onEach { entity ->
             entity.masterCount = 0
-            entity.setMaster(false)
+            entity.isMaster = false
         }
         if (changedEntities.isNotEmpty()) {
             wordDao.updateAll(changedEntities)
@@ -331,7 +331,7 @@ class WordRepository @Inject constructor(
                                 english = row[1]
                                 pronunciation = row[2]
                                 chinese = row[3]
-                                setMaster(false)
+                                isMaster = false
                                 masterCount = 0
                             }
                         }
@@ -350,7 +350,7 @@ private fun WordEntity.toWordItem(): WordItem {
         english = english,
         pronunciation = pronunciation,
         chinese = chinese,
-        isMastered = isMaster(),
+        isMastered = isMaster,
         masterCount = masterCount
     )
 }
