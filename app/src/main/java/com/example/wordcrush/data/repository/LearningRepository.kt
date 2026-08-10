@@ -8,6 +8,7 @@ import com.example.wordcrush.data.local.PreferenceManager
 import com.example.wordcrush.data.model.DailyLearningPlan
 import com.example.wordcrush.data.model.LearningMutationRequest
 import com.example.wordcrush.data.model.LearningStateResponse
+import com.example.wordcrush.data.model.LearningWordResponse
 import com.example.wordcrush.data.model.LearningSyncRequest
 import com.example.wordcrush.data.model.WordItem
 import com.example.wordcrush.data.network.requireData
@@ -178,15 +179,21 @@ class LearningRepository @Inject constructor(
 
     private suspend fun refreshCatalogLocked() {
         var page = 0
+        val remoteWords = mutableListOf<LearningWordResponse>()
         while (true) {
             val catalog = remoteDataSource.getCatalog(
                 page = page,
                 size = AppConstants.Learning.CATALOG_PAGE_SIZE
             ).requireData()
-            wordRepository.upsertRemoteCatalog(catalog.items)
-            if (catalog.items.isEmpty() || catalog.items.size < AppConstants.Learning.CATALOG_PAGE_SIZE) break
+            remoteWords += catalog.items
+            if (
+                catalog.items.isEmpty() ||
+                remoteWords.size >= catalog.total ||
+                catalog.items.size < AppConstants.Learning.CATALOG_PAGE_SIZE
+            ) break
             page++
         }
+        wordRepository.replaceRemoteCatalog(remoteWords)
         catalogLoaded = true
     }
 
@@ -213,7 +220,7 @@ class LearningRepository @Inject constructor(
     }
 
     private suspend fun applyState(state: LearningStateResponse): DailyLearningPlan {
-        wordRepository.upsertRemoteCatalog(state.todayWords)
+        wordRepository.mergeRemoteWords(state.todayWords)
         wordRepository.applyRemoteProgress(state.progress)
         preferenceManager.saveDailyWordTarget(state.dailyTarget)
         preferenceManager.saveDailyPlan(state.planDate, state.todayWordIds)

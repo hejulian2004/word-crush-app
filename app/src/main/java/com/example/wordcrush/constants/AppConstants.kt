@@ -77,9 +77,6 @@ internal object AppConstants {
     object WordBook {
         const val PAGE_SIZE = 40
         const val LOAD_MORE_THRESHOLD = 6
-        const val ASSET_FILE_NAME = "wordbook.csv"
-        const val CSV_COLUMN_COUNT = 4
-        const val CSV_SEQUENCE_HEADER = "序号"
         const val DATE_FORMAT = "yyyy-MM-dd"
     }
 

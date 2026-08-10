@@ -1,6 +1,5 @@
 package com.example.wordcrush.data.repository
 
-import android.content.Context
 import com.example.wordcrush.Database.Word.WordDao
 import com.example.wordcrush.Database.Word.WordEntity
 import com.example.wordcrush.constants.AppConstants
@@ -9,13 +8,10 @@ import com.example.wordcrush.data.model.DailyLearningPlan
 import com.example.wordcrush.data.model.LearningProgressResponse
 import com.example.wordcrush.data.model.LearningWordResponse
 import com.example.wordcrush.data.model.WordItem
-import com.opencsv.CSVReader
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.io.InputStreamReader
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -24,7 +20,6 @@ import javax.inject.Singleton
 
 @Singleton
 class WordRepository @Inject constructor(
-    @ApplicationContext private val context: Context,
     private val wordDao: WordDao,
     private val preferenceManager: PreferenceManager
 ) {
@@ -35,35 +30,22 @@ class WordRepository @Inject constructor(
         getCachedWords()
     }
 
-    suspend fun upsertRemoteCatalog(words: List<LearningWordResponse>) = withContext(Dispatchers.IO) {
-        if (words.isEmpty()) return@withContext
-        val existing = wordDao.getAllWords().associateBy { it.id }
-        val inserts = words.filterNot { existing.containsKey(it.id) }.map { remote ->
-            WordEntity().apply {
-                id = remote.id
-                english = remote.english
-                pronunciation = remote.pronunciation
-                chinese = remote.chinese
-                isMaster = false
-                masterCount = 0
-            }
+    suspend fun replaceRemoteCatalog(words: List<LearningWordResponse>) = withContext(Dispatchers.IO) {
+        val remoteWords = words.distinctBy { it.id }
+        mergeRemoteWordsIntoDatabase(remoteWords)
+        if (remoteWords.isEmpty()) {
+            wordDao.deleteAll()
+        } else {
+            wordDao.deleteNotInIds(remoteWords.map { it.id })
         }
-        if (inserts.isNotEmpty()) {
-            wordDao.insertAll(inserts)
-        }
-        val updates = words.mapNotNull { remote ->
-            existing[remote.id]?.apply {
-                english = remote.english
-                pronunciation = remote.pronunciation
-                chinese = remote.chinese
-            }
-        }
-        if (updates.isNotEmpty()) {
-            wordDao.updateAll(updates)
-        }
-        cacheMutex.withLock {
-            cachedWords = wordDao.getAllWords().map { it.toWordItem() }
-        }
+        refreshCachedWords()
+    }
+
+    suspend fun mergeRemoteWords(words: List<LearningWordResponse>) = withContext(Dispatchers.IO) {
+        val remoteWords = words.distinctBy { it.id }
+        if (remoteWords.isEmpty()) return@withContext
+        mergeRemoteWordsIntoDatabase(remoteWords)
+        refreshCachedWords()
     }
 
     suspend fun applyRemoteProgress(progress: List<LearningProgressResponse>) = withContext(Dispatchers.IO) {
@@ -255,7 +237,6 @@ class WordRepository @Inject constructor(
         cachedWords?.let { return it }
         return cacheMutex.withLock {
             cachedWords?.let { return@withLock it }
-            ensureSeeded()
             wordDao.getAllWords().map { it.toWordItem() }.also { loadedWords ->
                 cachedWords = loadedWords
             }
@@ -287,6 +268,36 @@ class WordRepository @Inject constructor(
         }
     }
 
+    private fun mergeRemoteWordsIntoDatabase(words: List<LearningWordResponse>) {
+        val existing = wordDao.getAllWords().associateBy { it.id }
+        val inserts = words.filterNot { existing.containsKey(it.id) }.map { it.toEntity() }
+        if (inserts.isNotEmpty()) {
+            wordDao.insertAll(inserts)
+        }
+        val updates = words.mapNotNull { remote ->
+            existing[remote.id]?.apply {
+                english = remote.english
+                pronunciation = remote.pronunciation
+                chinese = remote.chinese
+                isMaster = remote.mastered ||
+                    remote.masterCount >= AppConstants.Learning.REQUIRED_CORRECT_MATCHES
+                masterCount = remote.masterCount.coerceIn(
+                    0,
+                    AppConstants.Learning.REQUIRED_CORRECT_MATCHES
+                )
+            }
+        }
+        if (updates.isNotEmpty()) {
+            wordDao.updateAll(updates)
+        }
+    }
+
+    private suspend fun refreshCachedWords() {
+        cacheMutex.withLock {
+            cachedWords = wordDao.getAllWords().map { it.toWordItem() }
+        }
+    }
+
     private fun buildNewTodayWordIds(unmasteredWords: List<WordItem>, dailyTarget: Int): List<Int> {
         return unmasteredWords
             .shuffled()
@@ -311,37 +322,17 @@ class WordRepository @Inject constructor(
         return SimpleDateFormat(AppConstants.WordBook.DATE_FORMAT, Locale.US).format(Date())
     }
 
-    private fun ensureSeeded() {
-        if (wordDao.getAllWords().isNotEmpty()) {
-            return
-        }
+}
 
-        context.assets.open(AppConstants.WordBook.ASSET_FILE_NAME).use { inputStream ->
-            CSVReader(InputStreamReader(inputStream)).use { reader ->
-                val entities = reader.readAll()
-                    .mapNotNull { row ->
-                        if (
-                            row.size != AppConstants.WordBook.CSV_COLUMN_COUNT ||
-                            row[0] == AppConstants.WordBook.CSV_SEQUENCE_HEADER
-                        ) {
-                            null
-                        } else {
-                            WordEntity().apply {
-                                id = row[0].toIntOrNull() ?: return@mapNotNull null
-                                english = row[1]
-                                pronunciation = row[2]
-                                chinese = row[3]
-                                isMaster = false
-                                masterCount = 0
-                            }
-                        }
-                    }
-                if (entities.isNotEmpty()) {
-                    wordDao.insertAll(entities)
-                }
-            }
-        }
-    }
+private fun LearningWordResponse.toEntity(): WordEntity {
+    return WordEntity(
+        id = id,
+        english = english,
+        pronunciation = pronunciation,
+        chinese = chinese,
+        isMaster = mastered || masterCount >= AppConstants.Learning.REQUIRED_CORRECT_MATCHES,
+        masterCount = masterCount.coerceIn(0, AppConstants.Learning.REQUIRED_CORRECT_MATCHES)
+    )
 }
 
 private fun WordEntity.toWordItem(): WordItem {

@@ -45,4 +45,10 @@ interface WordDao {
 
     @Query("SELECT * FROM WORDS WHERE isMaster = :isMastered")
     fun searchWords(isMastered: Boolean): List<WordEntity>
+
+    @Query("DELETE FROM WORDS WHERE id NOT IN (:ids)")
+    fun deleteNotInIds(ids: List<Int>)
+
+    @Query("DELETE FROM WORDS")
+    fun deleteAll()
 }

@@ -139,7 +139,6 @@ dependencies {
 
     // Other
     implementation(libs.gson)
-    implementation(libs.opencsv)
 
     // Testing
     testImplementation(libs.junit)
