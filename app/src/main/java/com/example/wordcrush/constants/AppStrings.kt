@@ -25,6 +25,13 @@ internal object AppStrings {
         const val RESET = "Reset"
         const val MARK = "Mark"
         const val GUEST = "Guest"
+        const val RETRY = "Retry"
+        const val CLEAR = "Clear"
+        const val SHOW = "Show"
+        const val HIDE = "Hide"
+        const val SYNCED = "Synced"
+        const val PENDING = "Pending sync"
+        const val OFFLINE = "Offline"
     }
 
     object Auth {
@@ -43,6 +50,25 @@ internal object AppStrings {
     object Loading {
         const val CHECKING_SESSION = "Checking session..."
         const val PREPARING_APP = "Preparing app..."
+    }
+
+    object Accessibility {
+        const val MATCH = "Open match game"
+        const val WORD_BOOK = "Open word book"
+        const val PROFILE = "Open profile"
+        const val PLAY_UK = "Play UK pronunciation"
+        const val PLAY_US = "Play US pronunciation"
+        const val SEARCH = "Search words"
+        const val CLEAR_SEARCH = "Clear search"
+        const val UPLOAD_AVATAR = "Change profile picture"
+        const val OPEN_RECORDS = "Open game records"
+        const val OPEN_RANKING = "Open ranking"
+        const val BACK = "Go back"
+        const val SHOW_PASSWORD = "Show password"
+        const val HIDE_PASSWORD = "Hide password"
+        const val EXPAND = "Show details"
+        const val COLLAPSE = "Hide details"
+        const val DELETE = "Delete record"
     }
 
     object Game {

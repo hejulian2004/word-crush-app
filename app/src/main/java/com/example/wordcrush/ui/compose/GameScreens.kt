@@ -1,73 +1,84 @@
 package com.example.wordcrush.ui.compose
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.background
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
-import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
-import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Leaderboard
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.keyframes
-import androidx.compose.animation.core.tween
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.wordcrush.R
-import com.example.wordcrush.ui.model.MatchCardType
-import com.example.wordcrush.ui.model.MatchCardUiModel
-import com.example.wordcrush.ui.model.MatchCardFeedback
-import com.example.wordcrush.ui.model.MatchMode
-import com.example.wordcrush.ui.viewmodel.MatchAction
-import com.example.wordcrush.ui.viewmodel.MatchEffect
-import com.example.wordcrush.ui.viewmodel.MatchSessionUiState
-import com.example.wordcrush.ui.viewmodel.MatchViewModel
-import com.example.wordcrush.constants.AppStrings
 import com.example.wordcrush.constants.AppConstants
+import com.example.wordcrush.constants.AppStrings
+import com.example.wordcrush.data.model.WordItem
 import com.example.wordcrush.ui.compose.theme.WordCrushMatchChineseSelected
 import com.example.wordcrush.ui.compose.theme.WordCrushMatchEnglishSelected
 import com.example.wordcrush.ui.compose.theme.WordCrushMatchSelectedBorder
 import com.example.wordcrush.ui.compose.theme.WordCrushMatchSelectedContent
 import com.example.wordcrush.ui.compose.theme.matchCardFlashColor
+import com.example.wordcrush.ui.model.MatchCardFeedback
+import com.example.wordcrush.ui.model.MatchCardType
+import com.example.wordcrush.ui.model.MatchCardUiModel
+import com.example.wordcrush.ui.model.MatchMode
+import com.example.wordcrush.ui.viewmodel.MatchAction
+import com.example.wordcrush.ui.viewmodel.MatchEffect
+import com.example.wordcrush.ui.viewmodel.MatchSessionUiState
+import com.example.wordcrush.ui.viewmodel.MatchViewModel
 
 @Composable
 internal fun MatchRoute(
@@ -75,7 +86,6 @@ internal fun MatchRoute(
     onShowMessage: (String) -> Unit,
     onOpenRanking: (Int) -> Unit
 ) {
-    val dims = appDimens()
     val viewModel: MatchViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedMode = uiState.selectedMode
@@ -101,11 +111,14 @@ internal fun MatchRoute(
         hearts = activeUiState.hearts,
         extra = if (selectedMode == MatchMode.TIMED) {
             AppStrings.Game.timer(activeUiState.remainingSeconds)
-        } else null,
+        } else {
+            null
+        },
         onPrimaryAction = { viewModel.onAction(MatchAction.StartOrRestart) },
-        primaryActionLabel = when (selectedMode) {
-            MatchMode.CLASSIC -> if (activeUiState.hasStarted) AppStrings.Common.RESTART else AppStrings.Common.START
-            MatchMode.TIMED -> if (activeUiState.hasStarted) AppStrings.Common.RESTART else AppStrings.Common.START
+        primaryActionLabel = if (activeUiState.hasStarted) {
+            AppStrings.Common.RESTART
+        } else {
+            AppStrings.Common.START
         },
         onStopAction = { viewModel.onAction(MatchAction.RequestStop) },
         stopVisible = isCurrentGameStarted,
@@ -113,73 +126,42 @@ internal fun MatchRoute(
         secondaryActionLabel = AppStrings.Common.RANKING,
         topControls = {
             if (!isCurrentGameStarted) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(dims.controlSpacing)
-                ) {
-                    MatchMode.entries.forEach { mode ->
-                        val selected = selectedMode == mode
-                        if (selected) {
-                            Button(
-                                onClick = { viewModel.onAction(MatchAction.ModeSelected(mode)) },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(dims.buttonHeight)
-                            ) {
-                                Text(if (mode == MatchMode.CLASSIC) AppStrings.Game.CLASSIC else AppStrings.Game.TIMED)
-                            }
-                        } else {
-                            OutlinedButton(
-                                onClick = { viewModel.onAction(MatchAction.ModeSelected(mode)) },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(dims.buttonHeight)
-                            ) {
-                                Text(if (mode == MatchMode.CLASSIC) AppStrings.Game.CLASSIC else AppStrings.Game.TIMED)
-                            }
-                        }
-                    }
-                }
+                MatchModeSelector(
+                    selectedMode = selectedMode,
+                    onModeSelected = { viewModel.onAction(MatchAction.ModeSelected(it)) }
+                )
             }
         },
         preActionContent = {
             if (!isCurrentGameStarted) {
-                Card(
+                Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
+                    color = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(dims.cardPadding),
-                        verticalArrangement = Arrangement.spacedBy(dims.scaled(6.dp))
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         Text(
                             text = if (selectedMode == MatchMode.CLASSIC) {
-                                AppStrings.Game.todayProgress(
-                                    activeUiState.masteredTodayCount,
-                                    activeUiState.todayWordCount
-                                )
+                                AppStrings.Game.CLASSIC
                             } else {
-                                AppStrings.Game.todayProgress(
-                                    activeUiState.masteredTodayCount,
-                                    activeUiState.todayWordCount
-                                )
+                                AppStrings.Game.TIMED
                             },
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        ProgressSummary(
+                            label = AppStrings.Game.todayProgress(
+                                activeUiState.masteredTodayCount,
+                                activeUiState.todayWordCount
+                            ),
+                            completed = activeUiState.masteredTodayCount,
+                            total = activeUiState.todayWordCount
                         )
                     }
                 }
-                LearnedWordsSummaryCard(
-                    summaries = if (selectedMode == MatchMode.CLASSIC) {
-                        activeUiState.learnedWordSummaries
-                    } else {
-                        activeUiState.learnedWordSummaries
-                    }
-                )
+                LearnedWordsSummaryCard(activeUiState.learnedWordSummaries)
             }
         }
     ) {
@@ -192,101 +174,44 @@ internal fun MatchRoute(
             )
         }
 
-        when (selectedMode) {
-            MatchMode.CLASSIC -> {
-                if (!activeUiState.hasStarted || !activeUiState.gameVisible) {
-                    EmptyStateCard(
-                        title = if (activeUiState.statusTitle == AppStrings.Learning.TODAY_FIXED_SET) {
-                            selectedMode.emptyTitle
-                        } else {
-                            activeUiState.statusTitle
-                        },
-                        message = if (activeUiState.statusTitle == AppStrings.Learning.TODAY_FIXED_SET) {
-                            selectedMode.emptyMessage
-                        } else {
-                            activeUiState.statusMessage
-                        }
-                    )
+        if (!activeUiState.hasStarted || !activeUiState.gameVisible) {
+            EmptyStateCard(
+                title = if (activeUiState.statusTitle == AppStrings.Learning.TODAY_FIXED_SET) {
+                    selectedMode.emptyTitle
                 } else {
-                    MatchGameContent(
-                        uiState = activeUiState,
-                        onCardClick = { viewModel.onAction(MatchAction.CardClicked(it)) },
-                        onPronunciationClick = { viewModel.onAction(MatchAction.PlayAudio(it)) }
-                    )
-                }
-            }
-            MatchMode.TIMED -> {
-                if (!activeUiState.hasStarted || !activeUiState.gameVisible) {
-                    EmptyStateCard(
-                        title = if (activeUiState.statusTitle == AppStrings.Learning.TODAY_FIXED_SET) {
-                            selectedMode.emptyTitle
-                        } else {
-                            activeUiState.statusTitle
-                        },
-                        message = if (activeUiState.statusTitle == AppStrings.Learning.TODAY_FIXED_SET) {
-                            selectedMode.emptyMessage
-                        } else {
-                            activeUiState.statusMessage
-                        }
-                    )
+                    activeUiState.statusTitle
+                },
+                message = if (activeUiState.statusTitle == AppStrings.Learning.TODAY_FIXED_SET) {
+                    selectedMode.emptyMessage
                 } else {
-                    MatchGameContent(
-                        uiState = activeUiState,
-                        onCardClick = { viewModel.onAction(MatchAction.CardClicked(it)) },
-                        onPronunciationClick = { viewModel.onAction(MatchAction.PlayAudio(it)) }
-                    )
+                    activeUiState.statusMessage
                 }
-            }
+            )
+        } else {
+            MatchGameContent(
+                uiState = activeUiState,
+                onCardClick = { viewModel.onAction(MatchAction.CardClicked(it)) },
+                onPronunciationClick = { viewModel.onAction(MatchAction.PlayAudio(it)) }
+            )
         }
     }
 
-    if (selectedMode == MatchMode.CLASSIC && activeUiState.gameOverMessage != null && activeUiState.gameOverScore != null) {
-        AlertDialog(
-            onDismissRequest = {
+    if (activeUiState.gameOverMessage != null && activeUiState.gameOverScore != null) {
+        GameOverDialog(
+            title = if (selectedMode == MatchMode.CLASSIC) {
+                AppStrings.Game.ROUND_COMPLETE
+            } else {
+                AppStrings.Game.TIMES_UP
+            },
+            message = AppStrings.scoreSummary(
+                activeUiState.gameOverMessage,
+                activeUiState.gameOverScore
+            ),
+            onPlayAgain = {
                 viewModel.onAction(MatchAction.ClearGameOver)
+                viewModel.onAction(MatchAction.StartOrRestart)
             },
-            title = { Text(AppStrings.Game.ROUND_COMPLETE) },
-            text = { Text(AppStrings.scoreSummary(activeUiState.gameOverMessage, activeUiState.gameOverScore)) },
-            confirmButton = {
-                Button(onClick = {
-                    viewModel.onAction(MatchAction.ClearGameOver)
-                    viewModel.onAction(MatchAction.StartOrRestart)
-                }) {
-                    Text(AppStrings.Common.PLAY_AGAIN)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    viewModel.onAction(MatchAction.ClearGameOver)
-                }) {
-                    Text(AppStrings.Common.CLOSE)
-                }
-            }
-        )
-    }
-
-    if (selectedMode == MatchMode.TIMED && activeUiState.gameOverMessage != null && activeUiState.gameOverScore != null) {
-        AlertDialog(
-            onDismissRequest = {
-                viewModel.onAction(MatchAction.ClearGameOver)
-            },
-            title = { Text(AppStrings.Game.TIMES_UP) },
-            text = { Text(AppStrings.scoreSummary(activeUiState.gameOverMessage, activeUiState.gameOverScore)) },
-            confirmButton = {
-                Button(onClick = {
-                    viewModel.onAction(MatchAction.ClearGameOver)
-                    viewModel.onAction(MatchAction.StartOrRestart)
-                }) {
-                    Text(AppStrings.Common.PLAY_AGAIN)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    viewModel.onAction(MatchAction.ClearGameOver)
-                }) {
-                    Text(AppStrings.Common.CLOSE)
-                }
-            }
+            onClose = { viewModel.onAction(MatchAction.ClearGameOver) }
         )
     }
 
@@ -296,9 +221,7 @@ internal fun MatchRoute(
             title = { Text(AppStrings.Game.END_CURRENT_GAME) },
             text = { Text(AppStrings.Game.STOPPING_GAME_MESSAGE) },
             confirmButton = {
-                Button(onClick = {
-                    viewModel.onAction(MatchAction.ConfirmStop)
-                }) {
+                Button(onClick = { viewModel.onAction(MatchAction.ConfirmStop) }) {
                     Text(AppStrings.Game.STOP)
                 }
             },
@@ -308,6 +231,40 @@ internal fun MatchRoute(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun MatchModeSelector(
+    selectedMode: MatchMode,
+    onModeSelected: (MatchMode) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        MatchMode.entries.forEach { mode ->
+            val selected = mode == selectedMode
+            if (selected) {
+                Button(
+                    onClick = { onModeSelected(mode) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 48.dp)
+                ) {
+                    Text(if (mode == MatchMode.CLASSIC) AppStrings.Game.CLASSIC else AppStrings.Game.TIMED)
+                }
+            } else {
+                OutlinedButton(
+                    onClick = { onModeSelected(mode) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 48.dp)
+                ) {
+                    Text(if (mode == MatchMode.CLASSIC) AppStrings.Game.CLASSIC else AppStrings.Game.TIMED)
+                }
+            }
+        }
     }
 }
 
@@ -335,119 +292,124 @@ private fun MatchGameScaffold(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = dims.pagePadding)
-            .verticalScroll(rememberScrollState()),
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = dims.pagePadding),
         verticalArrangement = Arrangement.spacedBy(dims.sectionSpacing)
     ) {
-        if (showHeader) {
-            ScreenHeader(title = title, subtitle = subtitle, subtitleMaxLines = 1)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = dims.contentMaxWidth)
+                .align(Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(dims.sectionSpacing)
+        ) {
+            if (showHeader) {
+                ScreenHeader(title = title, subtitle = subtitle, subtitleMaxLines = 2)
+            }
+            topControls()
+            preActionContent()
+            if (showStats) {
+                GameStats(score = score, hearts = hearts, extra = extra)
+            }
+            GameActionRow(
+                primaryLabel = primaryActionLabel,
+                onPrimaryClick = onPrimaryAction,
+                onStopClick = onStopAction,
+                stopVisible = stopVisible,
+                secondaryLabel = secondaryActionLabel,
+                onSecondaryClick = onSecondaryAction
+            )
+            content()
+            Spacer(modifier = Modifier.height(24.dp))
         }
-        topControls()
-        preActionContent()
-        if (showStats && extra == null) {
-            Row(
+    }
+}
+
+@Composable
+private fun GameStats(
+    score: Int,
+    hearts: Int,
+    extra: String?
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            StatCard(
+                title = AppStrings.Common.SCORE,
+                value = score.toString(),
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Min),
-                horizontalArrangement = Arrangement.spacedBy(dims.controlSpacing)
-            ) {
+                    .weight(1f)
+                    .fillMaxHeight()
+            )
+            if (extra != null) {
                 StatCard(
-                    AppStrings.Common.SCORE,
-                    score.toString(),
-                    Modifier
+                    title = AppStrings.Common.TIMER,
+                    value = extra,
+                    modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
                 )
+            } else {
                 LivesStatCard(
                     hearts = hearts,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                )
-            }
-        } else if (showStats) {
-            Column(verticalArrangement = Arrangement.spacedBy(dims.controlSpacing)) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(IntrinsicSize.Min),
-                    horizontalArrangement = Arrangement.spacedBy(dims.controlSpacing)
-                ) {
-                    StatCard(
-                        AppStrings.Common.SCORE,
-                        score.toString(),
-                        Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                    )
-                    StatCard(
-                        AppStrings.Common.TIMER,
-                        extra ?: "",
-                        Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                    )
-                }
-                LivesStatCard(
-                    hearts = hearts,
-                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
-        GameActionRow(
-            primaryLabel = primaryActionLabel,
-            onPrimaryClick = onPrimaryAction,
-            onStopClick = onStopAction,
-            stopVisible = stopVisible,
-            secondaryLabel = secondaryActionLabel,
-            onSecondaryClick = onSecondaryAction
-        )
-        content()
-        Spacer(modifier = Modifier.height(dims.scaled(24.dp)))
+        if (extra != null) {
+            LivesStatCard(hearts = hearts, modifier = Modifier.fillMaxWidth())
+        }
     }
 }
 
 @Composable
 private fun LatestMatchedWordCard(
-    word: com.example.wordcrush.data.model.WordItem?,
+    word: WordItem?,
     onMarkUnremembered: () -> Unit
 ) {
-    val dims = appDimens()
     if (word == null) return
 
-    Card(
+    Surface(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        shape = RoundedCornerShape(14.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = dims.pagePadding, vertical = dims.controlSpacing),
-            horizontalArrangement = Arrangement.spacedBy(dims.controlSpacing),
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(dims.tinySpacing)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
                 Text(
                     text = AppStrings.Game.LATEST_PAIR,
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
                 )
                 Text(
                     text = word.english,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
                 )
                 Text(
                     text = word.chinese.replace("\n", " ").trim(),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.82f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            androidx.compose.material3.OutlinedButton(onClick = onMarkUnremembered) {
+            OutlinedButton(onClick = onMarkUnremembered) {
                 Text(AppStrings.Game.NOT_REMEMBERED)
             }
         }
@@ -455,28 +417,21 @@ private fun LatestMatchedWordCard(
 }
 
 @Composable
-private fun LearnedWordsSummaryCard(
-    summaries: List<String>
-) {
-    val dims = appDimens()
+private fun LearnedWordsSummaryCard(summaries: List<String>) {
     if (summaries.isEmpty()) return
 
-    Card(
+    Surface(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(14.dp)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(dims.pagePadding),
-            verticalArrangement = Arrangement.spacedBy(dims.compactSpacing)
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Text(
                 text = AppStrings.Game.LEARNED_THIS_ROUND,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
+                style = MaterialTheme.typography.titleMedium
             )
             summaries.take(AppConstants.Game.MAX_LEARNED_SUMMARIES).forEach { summary ->
                 Text(
@@ -493,7 +448,7 @@ private fun LearnedWordsSummaryCard(
                         summaries.size - AppConstants.Game.MAX_LEARNED_SUMMARIES
                     ),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -509,36 +464,43 @@ private fun GameActionRow(
     secondaryLabel: String,
     onSecondaryClick: () -> Unit
 ) {
-    val dims = appDimens()
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(dims.controlSpacing)
-    ) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Button(
             onClick = onPrimaryClick,
             modifier = Modifier
-                .weight(1f)
-                .height(dims.inputHeight)
+                .fillMaxWidth()
+                .heightIn(min = 52.dp)
         ) {
             Text(primaryLabel)
         }
-        if (stopVisible) {
-            androidx.compose.material3.OutlinedButton(
-                onClick = onStopClick,
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (stopVisible) {
+                OutlinedButton(
+                    onClick = onStopClick,
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 48.dp)
+                ) {
+                    Text(AppStrings.Game.STOP)
+                }
+            }
+            FilledTonalButton(
+                onClick = onSecondaryClick,
                 modifier = Modifier
                     .weight(1f)
-                    .height(dims.inputHeight)
+                    .heightIn(min = 48.dp)
             ) {
-                Text(AppStrings.Game.STOP)
+                Icon(
+                    imageVector = Icons.Filled.Leaderboard,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(secondaryLabel)
             }
-        }
-        androidx.compose.material3.FilledTonalButton(
-            onClick = onSecondaryClick,
-            modifier = Modifier
-                .weight(1f)
-                .height(dims.inputHeight)
-        ) {
-            Text(secondaryLabel)
         }
     }
 }
@@ -548,41 +510,38 @@ private fun LivesStatCard(
     hearts: Int,
     modifier: Modifier = Modifier
 ) {
-    val dims = appDimens()
-    Card(
+    Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(dims.cardCorner),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(dims.pagePadding),
-            verticalArrangement = Arrangement.spacedBy(dims.compactSpacing)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
                 text = AppStrings.Game.LIVES,
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(dims.scaled(6.dp))) {
+            Row(
+                modifier = Modifier.semantics {
+                    contentDescription = "$hearts ${AppStrings.Game.LIFE_REMAINING}"
+                },
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 repeat(AppConstants.Game.MAX_HEARTS) { index ->
-                    Image(
-                        painter = painterResource(
-                            id = if (index < hearts) {
-                                R.drawable.icon_red_heart
-                            } else {
-                                R.drawable.icon_white_heart
-                            }
-                        ),
-                        contentDescription = if (index < hearts) {
-                            AppStrings.Game.LIFE_REMAINING
+                    Icon(
+                        imageVector = if (index < hearts) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        contentDescription = null,
+                        tint = if (index < hearts) {
+                            MaterialTheme.colorScheme.primary
                         } else {
-                            AppStrings.Game.LIFE_LOST
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
                         },
-                        modifier = Modifier.size(dims.heartSize)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -617,17 +576,19 @@ private fun MatchCardGrid(
     onPronunciationClick: (Int) -> Unit
 ) {
     val dims = appDimens()
-    LazyVerticalStaggeredGrid(
-        columns = StaggeredGridCells.Adaptive(minSize = dims.staggeredGridMinCell),
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = dims.gridMinCell),
         modifier = Modifier
             .fillMaxWidth()
             .height(dims.matchGridHeight),
-        horizontalArrangement = Arrangement.spacedBy(dims.controlSpacing),
-        verticalItemSpacing = dims.controlSpacing
+        contentPadding = PaddingValues(bottom = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        itemsIndexed(cards, key = { _, item -> item.id }) { index, item ->
+        items(items = cards, key = { it.id }) { item ->
+            val index = cards.indexOf(item)
             val matchedAlpha by animateFloatAsState(
-                targetValue = if (item.feedback == MatchCardFeedback.MATCHED) 0f else if (item.isMatched) 0f else 1f,
+                targetValue = if (item.feedback == MatchCardFeedback.MATCHED || item.isMatched) 0f else 1f,
                 animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
                 label = AppConstants.Animation.MATCHED_ALPHA_LABEL
             )
@@ -662,69 +623,108 @@ private fun MatchCardGrid(
                 item.isMatched -> MaterialTheme.colorScheme.secondaryContainer
                 item.isSelected && item.type == MatchCardType.ENGLISH -> WordCrushMatchEnglishSelected
                 item.isSelected && item.type == MatchCardType.CHINESE -> WordCrushMatchChineseSelected
-                item.type == MatchCardType.ENGLISH -> MaterialTheme.colorScheme.surfaceVariant
+                item.type == MatchCardType.ENGLISH -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.54f)
                 else -> MaterialTheme.colorScheme.surface
             }
             val contentColor = when {
                 item.isSelected -> WordCrushMatchSelectedContent
                 else -> MaterialTheme.colorScheme.onSurface
             }
+            val typeLabel = if (item.type == MatchCardType.ENGLISH) {
+                AppStrings.Game.ENGLISH_LABEL
+            } else {
+                AppStrings.Game.CHINESE_LABEL
+            }
             Card(
+                onClick = { onCardClick(index) },
+                enabled = !item.isMatched && item.feedback != MatchCardFeedback.MATCHED,
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = dims.matchCardMinHeight)
                     .scale(matchedScale)
                     .alpha(matchedAlpha)
-                    .clickable(enabled = !item.isMatched && item.feedback != MatchCardFeedback.MATCHED) {
-                        onCardClick(index)
+                    .semantics(mergeDescendants = true) {
+                        contentDescription = "$typeLabel ${item.text}"
                     },
                 colors = CardDefaults.cardColors(containerColor = containerColor),
-                border = if (item.isSelected) BorderStroke(2.dp, WordCrushMatchSelectedBorder) else null,
-                shape = RoundedCornerShape(dims.cardCornerLarge)
+                border = if (item.isSelected) {
+                    androidx.compose.foundation.BorderStroke(2.dp, WordCrushMatchSelectedBorder)
+                } else {
+                    null
+                },
+                shape = RoundedCornerShape(16.dp)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = dims.matchCardMinHeight)
-                        .padding(dims.pagePadding),
+                        .padding(14.dp),
                     verticalArrangement = Arrangement.Top
                 ) {
                     Text(
-                        text = if (item.type == MatchCardType.ENGLISH) {
-                            AppStrings.Game.ENGLISH_LABEL
-                        } else {
-                            AppStrings.Game.CHINESE_LABEL
-                        },
+                        text = typeLabel,
                         style = MaterialTheme.typography.labelMedium,
                         color = contentColor.copy(alpha = 0.78f)
                     )
-                    Spacer(modifier = Modifier.height(dims.compactSpacing))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = item.text,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = contentColor
+                    )
                     if (item.type == MatchCardType.ENGLISH && !item.pronunciation.isNullOrBlank()) {
-                        Text(
-                            text = item.text,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium,
-                            color = contentColor
-                        )
                         Spacer(modifier = Modifier.weight(1f))
-                        Text(
-                            text = item.pronunciation,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = contentColor.copy(alpha = 0.84f),
-                            modifier = Modifier.clickable {
-                                onPronunciationClick(item.wordId)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = item.pronunciation,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = contentColor.copy(alpha = 0.84f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            IconButton(
+                                onClick = { onPronunciationClick(item.wordId) },
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                    contentDescription = AppStrings.Accessibility.PLAY_UK,
+                                    tint = contentColor
+                                )
                             }
-                        )
-                    } else {
-                        Text(
-                            text = item.text,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium,
-                            color = contentColor
-                        )
+                        }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun GameOverDialog(
+    title: String,
+    message: String,
+    onPlayAgain: () -> Unit,
+    onClose: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text(title) },
+        text = { Text(message) },
+        confirmButton = {
+            Button(onClick = onPlayAgain) {
+                Text(AppStrings.Common.PLAY_AGAIN)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onClose) {
+                Text(AppStrings.Common.CLOSE)
+            }
+        }
+    )
 }

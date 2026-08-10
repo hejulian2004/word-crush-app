@@ -19,7 +19,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -77,14 +76,7 @@ fun WordCrushApp(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.surface,
-                                MaterialTheme.colorScheme.background
-                            )
-                        )
-                    )
+                    .background(MaterialTheme.colorScheme.background)
             ) {
                 when (rootFlow) {
                     RootFlow.Loading -> LoadingScreen(

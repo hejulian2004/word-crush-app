@@ -10,47 +10,58 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
+/**
+ * Window-based layout policy. It deliberately does not scale typography or controls with the
+ * screen: a tablet gets a different composition, not a blown-up phone.
+ */
 @Immutable
 internal data class AppDimens(
     val screenWidth: Dp,
     val screenHeight: Dp,
-    val scale: Float
+    val scale: Float = 1f
 ) {
-    val pagePadding = scaled(16.dp)
-    val pageTopPadding = scaled(16.dp)
-    val sectionSpacing = scaled(16.dp)
-    val compactSpacing = scaled(8.dp)
-    val tinySpacing = scaled(4.dp)
-    val chipSpacing = scaled(8.dp)
-    val controlSpacing = scaled(12.dp)
-    val cardPadding = scaled(18.dp)
-    val cardPaddingLarge = scaled(20.dp)
-    val buttonHeight = scaled(52.dp)
-    val inputHeight = scaled(56.dp)
-    val avatarSize = scaled(56.dp)
-    val smallAvatarSize = scaled(42.dp)
-    val iconSize = scaled(20.dp)
-    val cardCorner = scaled(20.dp)
-    val cardCornerLarge = scaled(22.dp)
-    val cardCornerAuth = scaled(28.dp)
-    val staggeredGridMinCell = if (screenWidth >= 600.dp) scaled(170.dp) else scaled(140.dp)
-    val matchGridHeight = when {
-        screenHeight < 700.dp -> scaled(440.dp)
-        screenHeight < 860.dp -> scaled(520.dp)
-        else -> scaled(620.dp)
-    }
-    val matchCardMinHeight = scaled(120.dp)
-    val heartSize = scaled(20.dp)
-    val bottomInsetPadding = scaled(16.dp)
+    val isCompact = screenWidth < 600.dp
+    val isMedium = screenWidth >= 600.dp && screenWidth < 840.dp
+    val isExpanded = screenWidth >= 840.dp
+    val usesNavigationRail = !isCompact
+    val contentMaxWidth = if (isExpanded) 1120.dp else 760.dp
 
-    fun scaled(base: Dp): Dp = (base.value * scale).dp
+    val pagePadding = 16.dp
+    val pageTopPadding = 16.dp
+    val sectionSpacing = 16.dp
+    val compactSpacing = 8.dp
+    val tinySpacing = 4.dp
+    val chipSpacing = 8.dp
+    val controlSpacing = 12.dp
+    val cardPadding = 16.dp
+    val cardPaddingLarge = 20.dp
+    val buttonHeight = 52.dp
+    val inputHeight = 56.dp
+    val avatarSize = 56.dp
+    val smallAvatarSize = 42.dp
+    val iconSize = 20.dp
+    val cardCorner = 16.dp
+    val cardCornerLarge = 20.dp
+    val cardCornerAuth = 24.dp
+    val gridMinCell = if (isExpanded) 190.dp else if (isMedium) 170.dp else 140.dp
+    val staggeredGridMinCell = gridMinCell
+    val matchGridHeight = when {
+        screenHeight < 500.dp -> 300.dp
+        screenHeight < 700.dp -> 420.dp
+        else -> 560.dp
+    }
+    val matchCardMinHeight = if (screenHeight < 500.dp) 100.dp else 116.dp
+    val heartSize = 20.dp
+    val bottomInsetPadding = 16.dp
+
+    // Source-compatible helper for remaining legacy composables. New layout code uses fixed tokens.
+    fun scaled(base: Dp): Dp = base
 }
 
 private val LocalAppDimens = staticCompositionLocalOf {
     AppDimens(
         screenWidth = 360.dp,
-        screenHeight = 800.dp,
-        scale = 1f
+        screenHeight = 800.dp
     )
 }
 
@@ -59,24 +70,12 @@ internal fun ProvideAppDimens(
     content: @Composable () -> Unit
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val widthScale = when {
-            maxWidth < 360.dp -> 0.90f
-            maxWidth < 400.dp -> 0.96f
-            maxWidth < 520.dp -> 1f
-            maxWidth < 720.dp -> 1.08f
-            else -> 1.14f
-        }
-        val heightScale = when {
-            maxHeight < 700.dp -> 0.94f
-            maxHeight > 920.dp -> 1.05f
-            else -> 1f
-        }
-        val dims = AppDimens(
-            screenWidth = maxWidth,
-            screenHeight = maxHeight,
-            scale = (widthScale * heightScale).coerceIn(0.88f, 1.14f)
-        )
-        CompositionLocalProvider(LocalAppDimens provides dims) {
+        CompositionLocalProvider(
+            LocalAppDimens provides AppDimens(
+                screenWidth = maxWidth,
+                screenHeight = maxHeight
+            )
+        ) {
             content()
         }
     }

@@ -19,6 +19,7 @@ typealias WordFilter = DomainWordFilter
 
 sealed interface WordBookAction {
     data object Refresh : WordBookAction
+    data object Retry : WordBookAction
     data class QueryChanged(val value: String) : WordBookAction
     data class FilterChanged(val filter: WordFilter) : WordBookAction
     data object ApplySearch : WordBookAction
@@ -56,6 +57,7 @@ class WordBookViewModel @Inject constructor(
     fun onAction(action: WordBookAction) {
         when (action) {
             WordBookAction.Refresh -> refresh()
+            WordBookAction.Retry -> refresh()
             is WordBookAction.QueryChanged -> {
                 updateState { it.copy(query = action.value) }
                 scheduleSearch()
@@ -81,7 +83,7 @@ class WordBookViewModel @Inject constructor(
         val query = currentState.query
         val filter = currentState.filter
         viewModelScope.launch {
-            updateState { it.copy(isLoading = true, isAppending = false) }
+            updateState { it.copy(isLoading = true, isAppending = false, error = null) }
             runCatching { searchWordsUseCase(query, filter) }
                 .onSuccess { words ->
                     matchingWords = words
@@ -89,6 +91,7 @@ class WordBookViewModel @Inject constructor(
                     updateState {
                         it.copy(
                             isLoading = false,
+                            error = null,
                             words = visibleWords,
                             canLoadMore = visibleWords.size < words.size
                         ).withEmptyState()
@@ -98,6 +101,7 @@ class WordBookViewModel @Inject constructor(
                     updateState {
                         it.copy(
                             isLoading = false,
+                            error = error.message ?: AppStrings.Errors.LOAD_WORDS_FAILED,
                             words = emptyList(),
                             canLoadMore = false,
                             emptyStateTitle = AppStrings.Errors.LOAD_WORDS_TITLE,
@@ -195,6 +199,7 @@ class WordBookViewModel @Inject constructor(
 data class WordBookUiState(
     val isLoading: Boolean = false,
     val isAppending: Boolean = false,
+    val error: String? = null,
     val query: String = "",
     val filter: WordFilter = WordFilter.ALL,
     val words: List<WordItem> = emptyList(),

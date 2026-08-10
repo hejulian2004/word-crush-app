@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 
 sealed interface GameRecordAction {
     data object Load : GameRecordAction
+    data object Retry : GameRecordAction
     data class ToggleExpanded(val recordId: Int) : GameRecordAction
     data class RequestDelete(val record: GameRecordItem) : GameRecordAction
     data object ConfirmDelete : GameRecordAction
@@ -44,6 +45,7 @@ class GameRecordViewModel @Inject constructor(
     fun onAction(action: GameRecordAction) {
         when (action) {
             GameRecordAction.Load -> load()
+            GameRecordAction.Retry -> load()
             is GameRecordAction.ToggleExpanded -> updateState {
                 it.copy(
                     expandedRecordId = if (it.expandedRecordId == action.recordId) {

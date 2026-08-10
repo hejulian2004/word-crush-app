@@ -2,12 +2,24 @@ package com.example.wordcrush.ui.compose
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.background
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.Leaderboard
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,6 +45,7 @@ internal fun MainFlow(
     val backStackEntry = navController.currentBackStackEntryAsState().value
     val currentRoute = backStackEntry?.destination?.route
     val scope = rememberCoroutineScope()
+    val showTopLevelNavigation = currentRoute in mainDestinations.map { it.route }
 
     fun navigateTo(route: String) {
         navController.navigate(route) {
@@ -44,35 +57,31 @@ internal fun MainFlow(
         }
     }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-            if (currentRoute in mainDestinations.map { it.route }) {
-                NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    tonalElevation = 0.dp
-                ) {
-                    mainDestinations.forEach { destination ->
-                        NavigationBarItem(
-                            selected = currentRoute == destination.route,
-                            onClick = { navigateTo(destination.route) },
-                            label = { Text(destination.label) },
-                            icon = { Text(destination.label.take(1)) },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.onSurface,
-                                selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                indicatorColor = MaterialTheme.colorScheme.surfaceVariant
-                            )
-                        )
-                    }
-                }
-            }
+    val navigationContent: @Composable RowScope.() -> Unit = {
+        mainDestinations.forEach { destination ->
+            val icon = destinationIcon(destination.route)
+            NavigationBarItem(
+                selected = currentRoute == destination.route,
+                onClick = { navigateTo(destination.route) },
+                label = { Text(destination.label) },
+                icon = {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = destination.label
+                    )
+                },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    indicatorColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            )
         }
-    ) { paddingValues ->
+    }
+
+    val navHost: @Composable (androidx.compose.foundation.layout.PaddingValues) -> Unit = { paddingValues ->
         NavHost(
             navController = navController,
             startDestination = MainRoute.Breakthrough,
@@ -130,4 +139,73 @@ internal fun MainFlow(
             }
         }
     }
+
+    if (showTopLevelNavigation && appDimens().usesNavigationRail) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            NavigationRail(
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                header = {
+                    Icon(
+                        imageVector = Icons.Filled.SportsEsports,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(vertical = 20.dp)
+                    )
+                }
+            ) {
+                mainDestinations.forEach { destination ->
+                    NavigationRailItem(
+                        selected = currentRoute == destination.route,
+                        onClick = { navigateTo(destination.route) },
+                        label = { Text(destination.label) },
+                        icon = {
+                            Icon(
+                                imageVector = destinationIcon(destination.route),
+                                contentDescription = destination.label
+                            )
+                        },
+                        colors = androidx.compose.material3.NavigationRailItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    )
+                }
+            }
+            Box(modifier = Modifier.weight(1f)) {
+                navHost(androidx.compose.foundation.layout.PaddingValues())
+            }
+        }
+    } else {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = MaterialTheme.colorScheme.background,
+            bottomBar = {
+                if (showTopLevelNavigation) {
+                    NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        tonalElevation = 0.dp,
+                        content = navigationContent
+                    )
+                }
+            }
+        ) { paddingValues ->
+            navHost(paddingValues)
+        }
+    }
+}
+
+private fun destinationIcon(route: String) = when (route) {
+    MainRoute.Breakthrough -> Icons.Filled.SportsEsports
+    MainRoute.WordBook -> Icons.AutoMirrored.Filled.MenuBook
+    MainRoute.Home -> Icons.Filled.Person
+    else -> Icons.Filled.Leaderboard
 }

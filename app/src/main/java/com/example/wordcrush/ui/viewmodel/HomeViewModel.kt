@@ -112,23 +112,36 @@ class HomeViewModel @Inject constructor(
 
     private fun refresh() {
         launchAction {
-            val plan = getDailyLearningPlanUseCase()
-            val summary = getScoreSummaryUseCase()
-            val pendingMutations = getPendingLearningMutationsUseCase()
-            updateState {
-                it.copy(
-                    dailyTarget = plan.dailyTarget,
-                    dailyTargetInput = plan.dailyTarget.toString(),
-                    todayWordCount = plan.todayTotalCount,
-                    completedTodayCount = plan.completedCount,
-                    allWordsMastered = plan.allWordsMastered,
-                    dailyCompleted = plan.isDailyCompleted,
-                    canIncreaseDailyTarget = plan.canIncreaseDailyTarget,
-                    breakthroughScore = summary.breakthroughScore,
-                    timeLimitScore = summary.timeLimitScore,
-                    pendingLearningMutations = pendingMutations,
-                    error = null
-                )
+            updateState { it.copy(isRefreshing = true, error = null) }
+            runCatching {
+                val plan = getDailyLearningPlanUseCase()
+                val summary = getScoreSummaryUseCase()
+                val pendingMutations = getPendingLearningMutationsUseCase()
+                Triple(plan, summary, pendingMutations)
+            }.onSuccess { (plan, summary, pendingMutations) ->
+                updateState {
+                    it.copy(
+                        dailyTarget = plan.dailyTarget,
+                        dailyTargetInput = plan.dailyTarget.toString(),
+                        todayWordCount = plan.todayTotalCount,
+                        completedTodayCount = plan.completedCount,
+                        allWordsMastered = plan.allWordsMastered,
+                        dailyCompleted = plan.isDailyCompleted,
+                        canIncreaseDailyTarget = plan.canIncreaseDailyTarget,
+                        breakthroughScore = summary.breakthroughScore,
+                        timeLimitScore = summary.timeLimitScore,
+                        pendingLearningMutations = pendingMutations,
+                        isRefreshing = false,
+                        error = null
+                    )
+                }
+            }.onFailure { error ->
+                updateState {
+                    it.copy(
+                        isRefreshing = false,
+                        error = error.message ?: AppStrings.Errors.REQUEST_FAILED
+                    )
+                }
             }
         }
     }
@@ -269,6 +282,7 @@ data class HomeUiState(
     val username: String = "",
     val avatarUrl: String = "",
     val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
     val isUploadingAvatar: Boolean = false,
     val error: String? = null,
     val breakthroughScore: Int = 0,

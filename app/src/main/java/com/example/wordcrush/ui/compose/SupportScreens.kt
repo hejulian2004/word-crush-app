@@ -1,37 +1,68 @@
-﻿package com.example.wordcrush.ui.compose
+package com.example.wordcrush.ui.compose
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.background
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Leaderboard
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -44,10 +75,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -57,8 +90,8 @@ import com.example.wordcrush.data.model.GameRecordItem
 import com.example.wordcrush.data.model.RankingItem
 import com.example.wordcrush.data.model.WordItem
 import com.example.wordcrush.ui.viewmodel.GameRecordAction
-import com.example.wordcrush.ui.viewmodel.GameRecordViewModel
 import com.example.wordcrush.ui.viewmodel.GameRecordEffect
+import com.example.wordcrush.ui.viewmodel.GameRecordViewModel
 import com.example.wordcrush.ui.viewmodel.HomeAction
 import com.example.wordcrush.ui.viewmodel.HomeEffect
 import com.example.wordcrush.ui.viewmodel.HomeViewModel
@@ -105,94 +138,125 @@ internal fun WordBookRoute(
         }
     }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = dims.pagePadding)
-            .fillMaxWidth(),
-        state = listState,
-        verticalArrangement = Arrangement.spacedBy(dims.sectionSpacing)
-    ) {
-        item {
-            ScreenHeader(
-                title = AppStrings.WordBook.TITLE,
-                subtitle = AppStrings.WordBook.SUBTITLE
-            )
-        }
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(dims.controlSpacing),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = dims.contentMaxWidth)
+                .align(Alignment.TopCenter)
+                .background(MaterialTheme.colorScheme.background)
+                .imePadding(),
+            state = listState,
+            contentPadding = PaddingValues(horizontal = dims.pagePadding, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(dims.sectionSpacing)
+        ) {
+            item {
+                ScreenHeader(
+                    title = AppStrings.WordBook.TITLE,
+                    subtitle = AppStrings.WordBook.SUBTITLE
+                )
+            }
+            item {
                 OutlinedTextField(
                     value = uiState.query,
                     onValueChange = { viewModel.onAction(WordBookAction.QueryChanged(it)) },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                     label = { Text(AppStrings.WordBook.SEARCH_WORDS) },
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search)
+                    leadingIcon = {
+                        Icon(Icons.Filled.Search, contentDescription = AppStrings.Accessibility.SEARCH)
+                    },
+                    trailingIcon = {
+                        if (uiState.query.isNotEmpty()) {
+                            IconButton(onClick = { viewModel.onAction(WordBookAction.QueryChanged("")) }) {
+                                Text(AppStrings.Common.CLEAR)
+                            }
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
+                    keyboardActions = KeyboardActions(
+                        onSearch = { viewModel.onAction(WordBookAction.ApplySearch) }
+                    )
                 )
-                Box(
-                    contentAlignment = Alignment.Center
+            }
+            item {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Button(
-                        onClick = { viewModel.onAction(WordBookAction.ApplySearch) },
-                        modifier = Modifier.height(dims.inputHeight)
-                    ) {
-                        Text(AppStrings.Common.SEARCH)
+                    WordFilter.entries.forEach { filter ->
+                        FilterChip(
+                            selected = uiState.filter == filter,
+                            onClick = { viewModel.onAction(WordBookAction.FilterChanged(filter)) },
+                            label = { Text(filter.toDisplayName()) }
+                        )
                     }
                 }
             }
-        }
-        item {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(dims.chipSpacing),
-                verticalArrangement = Arrangement.spacedBy(dims.chipSpacing)
-            ) {
-                WordFilter.entries.forEach { filter ->
-                    FilterChip(
-                        selected = uiState.filter == filter,
-                        onClick = { viewModel.onAction(WordBookAction.FilterChanged(filter)) },
-                        label = { Text(filter.toDisplayName()) }
+            if (uiState.error != null) {
+                item {
+                    EmptyStateCard(
+                        title = AppStrings.Errors.LOAD_WORDS_TITLE,
+                        message = uiState.error ?: AppStrings.Errors.LOAD_WORDS_FAILED,
+                        actionLabel = AppStrings.Common.RETRY,
+                        onAction = { viewModel.onAction(WordBookAction.Retry) },
+                        isError = true
                     )
                 }
-            }
-        }
-        when {
-            uiState.isLoading -> item {
-                LoadingSection()
-            }
-            uiState.words.isEmpty() -> item {
-                EmptyStateCard(
-                    title = uiState.emptyStateTitle,
-                    message = uiState.emptyStateMessage
-                )
-            }
-            else -> items(
-                items = uiState.words,
-                key = { word -> word.id }
-            ) { word ->
-                WordItemCard(
-                    word = word,
-                    onPlayUk = { viewModel.onAction(WordBookAction.PlayAudio(word, 1)) },
-                    onPlayUs = { viewModel.onAction(WordBookAction.PlayAudio(word, 2)) },
-                    onMasteryChanged = { isMastered ->
-                        viewModel.onAction(WordBookAction.MasteryChanged(word, isMastered))
-                    }
-                )
-            }
-        }
-        item {
-            if (uiState.isAppending) {
-                LoadingSection()
             } else {
-                Spacer(modifier = Modifier.height(dims.scaled(24.dp)))
+                when {
+                    uiState.isLoading -> item { LoadingSection() }
+                    uiState.words.isEmpty() -> item {
+                        EmptyStateCard(
+                            title = uiState.emptyStateTitle,
+                            message = uiState.emptyStateMessage
+                        )
+                    }
+                    dims.isCompact -> items(
+                        items = uiState.words,
+                        key = { word -> word.id }
+                    ) { word ->
+                        WordItemCard(
+                            word = word,
+                            onPlayUk = { viewModel.onAction(WordBookAction.PlayAudio(word, 1)) },
+                            onPlayUs = { viewModel.onAction(WordBookAction.PlayAudio(word, 2)) },
+                            onMasteryChanged = { isMastered ->
+                                viewModel.onAction(WordBookAction.MasteryChanged(word, isMastered))
+                            }
+                        )
+                    }
+                    else -> {
+                        item {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                uiState.words.chunked(2).forEach { rowWords ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        rowWords.forEach { word ->
+                                            WordItemCard(
+                                                modifier = Modifier.weight(1f),
+                                                word = word,
+                                                onPlayUk = { viewModel.onAction(WordBookAction.PlayAudio(word, 1)) },
+                                                onPlayUs = { viewModel.onAction(WordBookAction.PlayAudio(word, 2)) },
+                                                onMasteryChanged = { isMastered ->
+                                                    viewModel.onAction(WordBookAction.MasteryChanged(word, isMastered))
+                                                }
+                                            )
+                                        }
+                                        if (rowWords.size == 1) {
+                                            Spacer(modifier = Modifier.weight(1f))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
-        }
-        item {
-            Spacer(modifier = Modifier.height(dims.scaled(24.dp)))
+            item {
+                if (uiState.isAppending) LoadingSection() else Spacer(modifier = Modifier.height(24.dp))
+            }
         }
     }
 }
@@ -207,9 +271,7 @@ internal fun HomeRoute(
     val viewModel: HomeViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) {
-            viewModel.onAction(HomeAction.UploadAvatar(uri))
-        }
+        if (uri != null) viewModel.onAction(HomeAction.UploadAvatar(uri))
     }
 
     LaunchedEffect(viewModel) {
@@ -222,223 +284,189 @@ internal fun HomeRoute(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = dims.pagePadding)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(dims.sectionSpacing)
-    ) {
-        ScreenHeader(
-            title = AppStrings.Profile.TITLE,
-            subtitle = AppStrings.Profile.SUBTITLE
-        )
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = dims.contentMaxWidth)
+                .align(Alignment.TopCenter)
+                .verticalScroll(rememberScrollState())
+                .imePadding()
+                .padding(horizontal = dims.pagePadding, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(dims.sectionSpacing)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(dims.cardPaddingLarge),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                UserAvatar(
-                    imageUrl = uiState.avatarUrl,
-                    fallbackLabel = uiState.username.ifBlank { AppStrings.Common.GUEST }.take(1).uppercase(),
-                    size = dims.avatarSize
+            ScreenHeader(
+                title = AppStrings.Profile.TITLE,
+                subtitle = AppStrings.Profile.SUBTITLE
+            )
+            if (uiState.isRefreshing) {
+                androidx.compose.material3.LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.primary
                 )
-                Spacer(modifier = Modifier.width(dims.pagePadding))
-                Column(verticalArrangement = Arrangement.spacedBy(dims.tinySpacing)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(dims.controlSpacing)
-                    ) {
+            }
+            uiState.error?.let { error ->
+                InlineNotice(
+                    message = error,
+                    isError = true,
+                    actionLabel = AppStrings.Common.RETRY,
+                    onAction = { viewModel.onAction(HomeAction.Refresh) }
+                )
+            }
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    UserAvatar(
+                        imageUrl = uiState.avatarUrl,
+                        fallbackLabel = uiState.username.ifBlank { AppStrings.Common.GUEST }
+                            .take(1).uppercase(),
+                        size = dims.avatarSize
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = uiState.username.ifBlank { AppStrings.Common.GUEST },
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold
+                            style = MaterialTheme.typography.titleLarge
                         )
-                        OutlinedButton(
-                            onClick = { avatarPicker.launch(AppStrings.Profile.IMAGE_CONTENT_TYPE) },
-                            enabled = !uiState.isUploadingAvatar,
-                            modifier = Modifier.height(dims.scaled(36.dp))
-                        ) {
-                            Text(
-                                if (uiState.isUploadingAvatar) {
-                                    AppStrings.Profile.UPLOADING
-                                } else {
-                                    AppStrings.Profile.UPLOAD
-                                }
-                            )
-                        }
+                        Text(
+                            text = AppStrings.Profile.LEARNING_PROFILE,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                    Text(
-                        text = AppStrings.Profile.LEARNING_PROFILE,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    IconButton(
+                        onClick = { avatarPicker.launch(AppStrings.Profile.IMAGE_CONTENT_TYPE) },
+                        enabled = !uiState.isUploadingAvatar
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Edit,
+                            contentDescription = AppStrings.Accessibility.UPLOAD_AVATAR
+                        )
+                    }
                 }
             }
-        }
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(dims.cardPadding),
-                verticalArrangement = Arrangement.spacedBy(dims.compactSpacing)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = AppStrings.Profile.SCORE_SUMMARY,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
+                StatCard(
+                    title = AppStrings.Game.MATCH,
+                    value = uiState.breakthroughScore.toString(),
+                    modifier = Modifier.weight(1f)
                 )
-                Text(
-                    text = AppStrings.Profile.matchScore(uiState.breakthroughScore),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(
-                    text = AppStrings.Profile.timedScore(uiState.timeLimitScore),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                StatCard(
+                    title = AppStrings.Game.TIMED,
+                    value = uiState.timeLimitScore.toString(),
+                    modifier = Modifier.weight(1f)
                 )
             }
-        }
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(dims.cardPadding),
-                verticalArrangement = Arrangement.spacedBy(dims.controlSpacing)
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Text(
-                    text = AppStrings.Profile.DAILY_PLAN,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = when {
-                        uiState.allWordsMastered -> AppStrings.Profile.ALL_WORDS_LEARNED
-                        uiState.dailyCompleted && uiState.canIncreaseDailyTarget ->
-                            AppStrings.Profile.DAILY_WORDS_DONE
-                        uiState.dailyCompleted ->
-                            AppStrings.Profile.FIXED_SET_COMPLETE
-                        else ->
-                            AppStrings.Profile.fixedSetProgress(
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Text(AppStrings.Profile.DAILY_PLAN, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = when {
+                            uiState.allWordsMastered -> AppStrings.Profile.ALL_WORDS_LEARNED
+                            uiState.dailyCompleted && uiState.canIncreaseDailyTarget ->
+                                AppStrings.Profile.DAILY_WORDS_DONE
+                            uiState.dailyCompleted -> AppStrings.Profile.FIXED_SET_COMPLETE
+                            else -> AppStrings.Profile.fixedSetProgress(
                                 uiState.completedTodayCount,
                                 uiState.todayWordCount
                             )
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = if (uiState.pendingLearningMutations == 0) {
-                        AppStrings.Profile.LEARNING_PROGRESS_SYNCED
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    ProgressSummary(
+                        label = AppStrings.Learning.TODAY_FIXED_SET,
+                        completed = uiState.completedTodayCount,
+                        total = uiState.todayWordCount
+                    )
+                    if (uiState.pendingLearningMutations == 0) {
+                        SyncStatusPill(synced = true)
                     } else {
-                        AppStrings.Profile.pendingLearning(uiState.pendingLearningMutations)
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(dims.controlSpacing),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                        SyncStatusPill(synced = false, count = uiState.pendingLearningMutations)
+                    }
                     OutlinedTextField(
                         value = uiState.dailyTargetInput,
                         onValueChange = { viewModel.onAction(HomeAction.DailyTargetChanged(it)) },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         label = { Text(AppStrings.Profile.DAILY_WORD_COUNT) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(
-                            imeAction = ImeAction.Done,
-                            keyboardType = KeyboardType.Number
+                            keyboardType = KeyboardType.Number,
+                            imeAction = androidx.compose.ui.text.input.ImeAction.Done
                         )
                     )
                     Button(
                         onClick = { viewModel.onAction(HomeAction.SaveDailyTarget) },
-                        modifier = Modifier.height(dims.inputHeight)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
                     ) {
                         Text(AppStrings.Common.SAVE)
                     }
                 }
             }
-        }
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(dims.cardPadding),
-                verticalArrangement = Arrangement.spacedBy(dims.controlSpacing)
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Text(
-                    text = AppStrings.Profile.QUICK_ACTIONS,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Button(
-                    onClick = { viewModel.onAction(HomeAction.OpenRecords) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(dims.inputHeight)
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(AppStrings.Common.RECORDS)
-                }
-                FilledTonalButton(
-                    onClick = { viewModel.onAction(HomeAction.SyncCloudData) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(dims.inputHeight)
-                ) {
-                    Text(AppStrings.Profile.SYNC_CLOUD_DATA)
-                }
-                OutlinedButton(
-                    onClick = { viewModel.onAction(HomeAction.Refresh) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(dims.inputHeight)
-                ) {
-                    Text(AppStrings.Profile.REFRESH_SCORES)
-                }
-                OutlinedButton(
-                    onClick = { viewModel.onAction(HomeAction.ShowPasswordDialog) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(dims.inputHeight)
-                ) {
-                    Text(AppStrings.Profile.CHANGE_PASSWORD)
+                    Text(AppStrings.Profile.QUICK_ACTIONS, style = MaterialTheme.typography.titleMedium)
+                    ActionListRow(
+                        icon = Icons.Filled.History,
+                        label = AppStrings.Common.RECORDS,
+                        onClick = { viewModel.onAction(HomeAction.OpenRecords) }
+                    )
+                    ActionListRow(
+                        icon = Icons.Filled.Sync,
+                        label = AppStrings.Profile.SYNC_CLOUD_DATA,
+                        onClick = { viewModel.onAction(HomeAction.SyncCloudData) },
+                        enabled = !uiState.isLoading
+                    )
+                    ActionListRow(
+                        icon = Icons.Filled.Refresh,
+                        label = AppStrings.Profile.REFRESH_SCORES,
+                        onClick = { viewModel.onAction(HomeAction.Refresh) },
+                        enabled = !uiState.isRefreshing
+                    )
+                    ActionListRow(
+                        icon = Icons.Filled.Lock,
+                        label = AppStrings.Profile.CHANGE_PASSWORD,
+                        onClick = { viewModel.onAction(HomeAction.ShowPasswordDialog) }
+                    )
                 }
             }
+            OutlinedButton(
+                onClick = { viewModel.onAction(HomeAction.Logout) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+            ) {
+                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(AppStrings.Profile.LOG_OUT)
+            }
+            Spacer(modifier = Modifier.height(16.dp))
         }
-        OutlinedButton(
-            onClick = { viewModel.onAction(HomeAction.Logout) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(dims.inputHeight)
-        ) {
-            Text(AppStrings.Profile.LOG_OUT)
-        }
-        Spacer(modifier = Modifier.height(dims.scaled(24.dp)))
     }
 
     if (uiState.showPasswordDialog) {
@@ -446,32 +474,32 @@ internal fun HomeRoute(
             onDismissRequest = { viewModel.onAction(HomeAction.DismissPasswordDialog) },
             title = { Text(AppStrings.Profile.CHANGE_PASSWORD) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(
+                Column(
+                    modifier = Modifier.imePadding(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    PasswordInput(
                         value = uiState.oldPassword,
-                        onValueChange = { viewModel.onAction(HomeAction.OldPasswordChanged(it)) },
-                        label = { Text(AppStrings.Profile.CURRENT_PASSWORD) },
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation()
+                        label = AppStrings.Profile.CURRENT_PASSWORD,
+                        onValueChange = { viewModel.onAction(HomeAction.OldPasswordChanged(it)) }
                     )
-                    OutlinedTextField(
+                    PasswordInput(
                         value = uiState.newPassword,
-                        onValueChange = { viewModel.onAction(HomeAction.NewPasswordChanged(it)) },
-                        label = { Text(AppStrings.Profile.NEW_PASSWORD) },
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation()
+                        label = AppStrings.Profile.NEW_PASSWORD,
+                        onValueChange = { viewModel.onAction(HomeAction.NewPasswordChanged(it)) }
                     )
-                    OutlinedTextField(
+                    PasswordInput(
                         value = uiState.confirmPassword,
-                        onValueChange = { viewModel.onAction(HomeAction.ConfirmPasswordChanged(it)) },
-                        label = { Text(AppStrings.Profile.CONFIRM_NEW_PASSWORD) },
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation()
+                        label = AppStrings.Profile.CONFIRM_NEW_PASSWORD,
+                        onValueChange = { viewModel.onAction(HomeAction.ConfirmPasswordChanged(it)) }
                     )
                 }
             },
             confirmButton = {
-                Button(onClick = { viewModel.onAction(HomeAction.SubmitPasswordChange) }) {
+                Button(
+                    onClick = { viewModel.onAction(HomeAction.SubmitPasswordChange) },
+                    enabled = !uiState.isLoading
+                ) {
                     Text(AppStrings.Common.UPDATE)
                 }
             },
@@ -482,6 +510,80 @@ internal fun HomeRoute(
             }
         )
     }
+}
+
+@Composable
+private fun SyncStatusPill(synced: Boolean, count: Int = 0) {
+    val label = if (synced) AppStrings.Common.SYNCED else AppStrings.Profile.pendingLearning(count)
+    val icon = if (synced) Icons.Filled.CloudDone else Icons.Filled.CloudOff
+    val color = if (synced) {
+        MaterialTheme.colorScheme.secondaryContainer
+    } else {
+        MaterialTheme.colorScheme.tertiaryContainer
+    }
+    Surface(color = color, shape = RoundedCornerShape(10.dp)) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))
+            Text(label, style = MaterialTheme.typography.labelMedium)
+        }
+    }
+}
+
+@Composable
+private fun ActionListRow(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true
+) {
+    OutlinedButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 52.dp),
+        contentPadding = PaddingValues(horizontal = 14.dp)
+    ) {
+        Icon(icon, contentDescription = null)
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(label, modifier = Modifier.weight(1f))
+        Icon(Icons.Outlined.ChevronRight, contentDescription = null)
+    }
+}
+
+@Composable
+private fun PasswordInput(
+    value: String,
+    label: String,
+    onValueChange: (String) -> Unit
+) {
+    var visible by rememberSaveable { mutableStateOf(false) }
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text(label) },
+        singleLine = true,
+        visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        keyboardActions = KeyboardActions.Default,
+        trailingIcon = {
+            IconButton(onClick = { visible = !visible }) {
+                Icon(
+                    imageVector = if (visible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                    contentDescription = if (visible) {
+                        AppStrings.Accessibility.HIDE_PASSWORD
+                    } else {
+                        AppStrings.Accessibility.SHOW_PASSWORD
+                    }
+                )
+            }
+        }
+    )
 }
 
 @Composable
@@ -496,7 +598,6 @@ internal fun RankingRoute(
     LaunchedEffect(gameType) {
         viewModel.onAction(RankingAction.Load(gameType))
     }
-
     LaunchedEffect(viewModel) {
         viewModel.effect.collect { effect ->
             when (effect) {
@@ -511,15 +612,32 @@ internal fun RankingRoute(
         scrollable = false
     ) {
         when {
-            uiState.isLoading -> LoadingSection()
-            uiState.rankings.isEmpty() -> EmptyStateCard(
-                title = AppStrings.Ranking.NO_DATA,
-                message = AppStrings.Ranking.EMPTY_MESSAGE
+            uiState.isLoading && uiState.rankings.isEmpty() -> LoadingSection()
+            uiState.error != null && uiState.rankings.isEmpty() -> EmptyStateCard(
+                title = AppStrings.Errors.LOAD_RANKING_FAILED,
+                message = uiState.error ?: AppStrings.Errors.LOAD_RANKING_FAILED,
+                actionLabel = AppStrings.Common.RETRY,
+                onAction = { viewModel.onAction(RankingAction.Retry) },
+                isError = true
             )
-            else -> RankingContent(
-                rankings = uiState.rankings,
-                gameType = gameType
-            )
+            else -> {
+                uiState.error?.let { error ->
+                    InlineNotice(
+                        message = error,
+                        isError = true,
+                        actionLabel = AppStrings.Common.RETRY,
+                        onAction = { viewModel.onAction(RankingAction.Retry) }
+                    )
+                }
+                if (uiState.rankings.isEmpty()) {
+                    EmptyStateCard(
+                        title = AppStrings.Ranking.NO_DATA,
+                        message = AppStrings.Ranking.EMPTY_MESSAGE
+                    )
+                } else {
+                    RankingContent(uiState.rankings, gameType)
+                }
+            }
         }
     }
 }
@@ -532,10 +650,7 @@ internal fun GameRecordRoute(
     val viewModel: GameRecordViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) {
-        viewModel.onAction(GameRecordAction.Load)
-    }
-
+    LaunchedEffect(Unit) { viewModel.onAction(GameRecordAction.Load) }
     LaunchedEffect(viewModel) {
         viewModel.effect.collect { effect ->
             when (effect) {
@@ -550,33 +665,47 @@ internal fun GameRecordRoute(
         scrollable = false
     ) {
         when {
-            uiState.isLoading -> LoadingSection()
-            uiState.records.isEmpty() -> EmptyStateCard(
-                title = AppStrings.Records.NO_RECORDS,
-                message = AppStrings.Records.EMPTY_MESSAGE
+            uiState.isLoading && uiState.records.isEmpty() -> LoadingSection()
+            uiState.error != null && uiState.records.isEmpty() -> EmptyStateCard(
+                title = AppStrings.Errors.LOAD_RECORDS_FAILED,
+                message = uiState.error ?: AppStrings.Errors.LOAD_RECORDS_FAILED,
+                actionLabel = AppStrings.Common.RETRY,
+                onAction = { viewModel.onAction(GameRecordAction.Retry) },
+                isError = true
             )
-            else -> GameRecordContent(
-                records = uiState.records,
-                expandedRecordId = uiState.expandedRecordId,
-                onToggleExpanded = { recordId ->
-                    viewModel.onAction(GameRecordAction.ToggleExpanded(recordId))
-                },
-                onDelete = { record ->
-                    viewModel.onAction(GameRecordAction.RequestDelete(record))
+            else -> {
+                uiState.error?.let { error ->
+                    InlineNotice(
+                        message = error,
+                        isError = true,
+                        actionLabel = AppStrings.Common.RETRY,
+                        onAction = { viewModel.onAction(GameRecordAction.Retry) }
+                    )
                 }
-            )
+                if (uiState.records.isEmpty()) {
+                    EmptyStateCard(
+                        title = AppStrings.Records.NO_RECORDS,
+                        message = AppStrings.Records.EMPTY_MESSAGE
+                    )
+                } else {
+                    GameRecordContent(
+                        records = uiState.records,
+                        expandedRecordId = uiState.expandedRecordId,
+                        onToggleExpanded = { viewModel.onAction(GameRecordAction.ToggleExpanded(it)) },
+                        onDelete = { viewModel.onAction(GameRecordAction.RequestDelete(it)) }
+                    )
+                }
+            }
         }
     }
 
-    if (uiState.pendingDelete != null) {
+    uiState.pendingDelete?.let {
         AlertDialog(
             onDismissRequest = { viewModel.onAction(GameRecordAction.DismissDelete) },
             title = { Text(AppStrings.Records.DELETE_TITLE) },
             text = { Text(AppStrings.Records.DELETE_MESSAGE) },
             confirmButton = {
-                Button(onClick = {
-                    viewModel.onAction(GameRecordAction.ConfirmDelete)
-                }) {
+                Button(onClick = { viewModel.onAction(GameRecordAction.ConfirmDelete) }) {
                     Text(AppStrings.Common.DELETE)
                 }
             },
@@ -591,71 +720,76 @@ internal fun GameRecordRoute(
 
 @Composable
 private fun WordItemCard(
+    modifier: Modifier = Modifier,
     word: WordItem,
     onPlayUk: () -> Unit,
     onPlayUs: () -> Unit,
     onMasteryChanged: (Boolean) -> Unit
 ) {
-    val dims = appDimens()
-    val statusLabel = if (word.isMastered) AppStrings.WordBook.REMEMBERED else AppStrings.Common.LEARNING
-
-    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+    val statusContainer = if (word.isMastered) {
+        MaterialTheme.colorScheme.secondaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant
+    }
+    OutlinedCard(modifier = modifier.fillMaxWidth()) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(dims.cardPadding),
-            verticalArrangement = Arrangement.spacedBy(dims.compactSpacing)
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = dims.controlSpacing),
-                    verticalArrangement = Arrangement.spacedBy(dims.compactSpacing)
-                ) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = word.english,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = word.pronunciation,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Text(text = word.chinese, style = MaterialTheme.typography.bodyMedium)
                 }
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(dims.scaled(10.dp))
-                ) {
+                Surface(color = statusContainer, shape = RoundedCornerShape(8.dp)) {
                     Text(
-                        text = statusLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = if (word.isMastered) AppStrings.WordBook.REMEMBERED else AppStrings.Common.LEARNING,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                        style = MaterialTheme.typography.labelMedium
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(dims.chipSpacing)) {
-                        AssistChip(onClick = onPlayUk, label = { Text(AppStrings.Common.UK) })
-                        AssistChip(onClick = onPlayUs, label = { Text(AppStrings.Common.US) })
+                }
+            }
+            Text(text = word.chinese, style = MaterialTheme.typography.bodyLarge)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.End
+            ) {
+                IconButton(onClick = onPlayUk) {
+                    Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = AppStrings.Accessibility.PLAY_UK)
+                }
+                Text(AppStrings.Common.UK, style = MaterialTheme.typography.labelMedium)
+                IconButton(onClick = onPlayUs) {
+                    Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = AppStrings.Accessibility.PLAY_US)
+                }
+                Text(AppStrings.Common.US, style = MaterialTheme.typography.labelMedium)
+                Spacer(modifier = Modifier.width(8.dp))
+                if (word.isMastered) {
+                    OutlinedButton(
+                        onClick = { onMasteryChanged(false) },
+                        modifier = Modifier.heightIn(min = 44.dp)
+                    ) {
+                        Text(AppStrings.Common.RESET)
                     }
-                    if (word.isMastered) {
-                        OutlinedButton(
-                            onClick = { onMasteryChanged(false) },
-                            modifier = Modifier.height(dims.inputHeight)
-                        ) {
-                            Text(AppStrings.Common.RESET)
-                        }
-                    } else {
-                        FilledTonalButton(
-                            onClick = { onMasteryChanged(true) },
-                            modifier = Modifier.height(dims.inputHeight)
-                        ) {
-                            Text(AppStrings.Common.MARK)
-                        }
+                } else {
+                    FilledTonalButton(
+                        onClick = { onMasteryChanged(true) },
+                        modifier = Modifier.heightIn(min = 44.dp)
+                    ) {
+                        Text(AppStrings.Common.MARK)
                     }
                 }
             }
@@ -664,218 +798,138 @@ private fun WordItemCard(
 }
 
 @Composable
-private fun RankingContent(
-    rankings: List<RankingItem>,
-    gameType: Int
-) {
-    val dims = appDimens()
+private fun RankingContent(rankings: List<RankingItem>, gameType: Int) {
     Column(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(dims.sectionSpacing)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        RankingOverviewCard(rankings = rankings, gameType = gameType)
-        RankingList(rankings = rankings, modifier = Modifier.weight(1f))
+        RankingOverviewCard(rankings, gameType)
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            contentPadding = PaddingValues(bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            items(
+                items = rankings,
+                key = { item -> "${item.username}-${item.time}-${item.avatarVersion}" }
+            ) { item ->
+                val index = rankings.indexOf(item)
+                if (index < AppConstants.Ranking.HIGHLIGHT_COUNT) {
+                    RankingHighlightCard(index, item)
+                } else {
+                    RankingStandardCard(index, item)
+                }
+            }
+        }
     }
 }
 
 @Composable
-private fun RankingOverviewCard(
-    rankings: List<RankingItem>,
-    gameType: Int
-) {
-    val dims = appDimens()
+private fun RankingOverviewCard(rankings: List<RankingItem>, gameType: Int) {
     val topScore = rankings.maxOfOrNull { it.score } ?: 0
-    val title = AppStrings.Records.modeTitle(gameType == 0)
-
-    Card(
+    Surface(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+        color = MaterialTheme.colorScheme.primaryContainer,
+        shape = RoundedCornerShape(16.dp)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(dims.cardPaddingLarge),
-            verticalArrangement = Arrangement.spacedBy(dims.controlSpacing)
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Leaderboard, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = AppStrings.Records.modeTitle(gameType == 0),
+                    style = MaterialTheme.typography.titleLarge
+                )
+            }
             Text(
                 text = AppStrings.Ranking.TOP_PLAYERS_DESCRIPTION,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onPrimaryContainer
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(dims.controlSpacing)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                StatCard(
-                    title = AppStrings.Ranking.PLAYERS,
-                    value = rankings.size.toString(),
-                    modifier = Modifier.weight(1f)
-                )
-                StatCard(
-                    title = AppStrings.Ranking.TOP_SCORE,
-                    value = topScore.toString(),
-                    modifier = Modifier.weight(1f)
-                )
+                StatCard(AppStrings.Ranking.PLAYERS, rankings.size.toString(), Modifier.weight(1f))
+                StatCard(AppStrings.Ranking.TOP_SCORE, topScore.toString(), Modifier.weight(1f))
             }
         }
     }
 }
 
 @Composable
-private fun RankingList(
-    rankings: List<RankingItem>,
-    modifier: Modifier = Modifier
-) {
-    val dims = appDimens()
-    LazyColumn(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(dims.controlSpacing)
-    ) {
-        items(
-            count = rankings.size,
-            key = { index ->
-                val item = rankings[index]
-                "${item.username}-${item.time}-${item.avatarVersion}-$index"
-            }
-        ) { index ->
-            val item = rankings[index]
-            if (index < AppConstants.Ranking.HIGHLIGHT_COUNT) {
-                RankingHighlightCard(index = index, item = item)
-            } else {
-                RankingStandardCard(index = index, item = item)
-            }
-        }
-    }
-}
-
-@Composable
-private fun RankingHighlightCard(
-    index: Int,
-    item: RankingItem
-) {
-    val dims = appDimens()
-    val containerColor = when (index) {
+private fun RankingHighlightCard(index: Int, item: RankingItem) {
+    val color = when (index) {
         0 -> MaterialTheme.colorScheme.primaryContainer
         1 -> MaterialTheme.colorScheme.secondaryContainer
         else -> MaterialTheme.colorScheme.tertiaryContainer
     }
-    val onContainerColor = when (index) {
-        0 -> MaterialTheme.colorScheme.onPrimaryContainer
-        1 -> MaterialTheme.colorScheme.onSecondaryContainer
-        else -> MaterialTheme.colorScheme.onTertiaryContainer
-    }
-
-    Card(
+    Surface(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = containerColor)
+        color = color,
+        shape = RoundedCornerShape(14.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(dims.cardPaddingLarge),
-            verticalArrangement = Arrangement.spacedBy(dims.controlSpacing)
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Text(
+                text = AppStrings.Ranking.compactRank(index),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            UserAvatar(
+                imageUrl = item.avatarUrl,
+                fallbackLabel = item.username.take(1).uppercase(),
+                size = appDimens().smallAvatarSize
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(item.username, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    text = AppStrings.Ranking.rank(index),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = onContainerColor.copy(alpha = 0.8f)
-                )
-                Text(
-                    text = item.score.toString(),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = onContainerColor
+                    item.time,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                UserAvatar(
-                    imageUrl = item.avatarUrl,
-                    fallbackLabel = item.username.take(1).uppercase(),
-                    size = dims.avatarSize
-                )
-                Spacer(modifier = Modifier.width(dims.controlSpacing))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = item.username,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = onContainerColor
-                    )
-                    Text(
-                        text = item.time,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = onContainerColor.copy(alpha = 0.78f)
-                    )
-                }
-            }
+            Text(item.score.toString(), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         }
     }
 }
 
 @Composable
-private fun RankingStandardCard(
-    index: Int,
-    item: RankingItem
-) {
-    val dims = appDimens()
+private fun RankingStandardCard(index: Int, item: RankingItem) {
     OutlinedCard(modifier = Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(dims.cardPadding),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = AppStrings.Ranking.compactRank(index),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = AppStrings.Common.SCORE,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Spacer(modifier = Modifier.width(dims.controlSpacing))
+            Text(
+                text = AppStrings.Ranking.compactRank(index),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.width(38.dp)
+            )
             UserAvatar(
                 imageUrl = item.avatarUrl,
                 fallbackLabel = item.username.take(1).uppercase(),
-                size = dims.smallAvatarSize
+                size = appDimens().smallAvatarSize
             )
-            Spacer(modifier = Modifier.width(dims.controlSpacing))
             Column(modifier = Modifier.weight(1f)) {
+                Text(item.username, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    text = item.username,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = item.time,
+                    item.time,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Text(
-                text = item.score.toString(),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
+            Text(item.score.toString(), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -887,23 +941,19 @@ private fun GameRecordContent(
     onToggleExpanded: (Int) -> Unit,
     onDelete: (GameRecordItem) -> Unit
 ) {
-    val dims = appDimens()
     Column(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(dims.sectionSpacing)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         RecordOverviewCard(records)
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            verticalArrangement = Arrangement.spacedBy(dims.controlSpacing)
+            contentPadding = PaddingValues(bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            items(
-                count = records.size,
-                key = { index -> records[index].id }
-            ) { index ->
-                val record = records[index]
+            items(records, key = { it.id }) { record ->
                 RecordCard(
                     record = record,
                     expanded = expandedRecordId == record.id,
@@ -917,51 +967,30 @@ private fun GameRecordContent(
 
 @Composable
 private fun RecordOverviewCard(records: List<GameRecordItem>) {
-    val dims = appDimens()
     val bestScore = records.maxOfOrNull { it.score } ?: 0
     val learnedWordTotal = records.sumOf { it.wordProgress.size }
-
-    Card(
+    Surface(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        shape = RoundedCornerShape(16.dp)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(dims.cardPaddingLarge),
-            verticalArrangement = Arrangement.spacedBy(dims.controlSpacing)
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            Text(AppStrings.Records.YOUR_RECENT_RUNS, style = MaterialTheme.typography.titleLarge)
             Text(
-                text = AppStrings.Records.YOUR_RECENT_RUNS,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = AppStrings.Records.RECENT_RUNS_DESCRIPTION,
+                AppStrings.Records.RECENT_RUNS_DESCRIPTION,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSecondaryContainer
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(dims.controlSpacing)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                StatCard(
-                    title = AppStrings.Common.RECORDS,
-                    value = records.size.toString(),
-                    modifier = Modifier.weight(1f)
-                )
-                StatCard(
-                    title = AppStrings.Records.BEST_SCORE,
-                    value = bestScore.toString(),
-                    modifier = Modifier.weight(1f)
-                )
-                StatCard(
-                    title = AppStrings.Common.WORDS,
-                    value = learnedWordTotal.toString(),
-                    modifier = Modifier.weight(1f)
-                )
+                StatCard(AppStrings.Common.RECORDS, records.size.toString(), Modifier.weight(1f))
+                StatCard(AppStrings.Records.BEST_SCORE, bestScore.toString(), Modifier.weight(1f))
+                StatCard(AppStrings.Common.WORDS, learnedWordTotal.toString(), Modifier.weight(1f))
             }
         }
     }
@@ -974,114 +1003,81 @@ private fun RecordCard(
     onToggleExpanded: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val dims = appDimens()
-    val containerColor = if (record.gameType == 0) {
-        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-    } else {
-        MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = containerColor)
-    ) {
+    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(dims.cardPadding),
-            verticalArrangement = Arrangement.spacedBy(dims.controlSpacing)
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(dims.tinySpacing)
-                ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(record.gameTypeLabel, style = MaterialTheme.typography.titleMedium)
                     Text(
-                        text = record.gameTypeLabel,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = record.time,
+                        record.time,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = record.score.toString(),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = AppStrings.Common.SCORE,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Text(record.score.toString(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text(AppStrings.Common.SCORE, style = MaterialTheme.typography.labelMedium)
                 }
             }
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(dims.chipSpacing),
-                verticalArrangement = Arrangement.spacedBy(dims.chipSpacing)
-            ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AssistChip(onClick = {}, enabled = false, label = { Text(record.gameTypeLabel) })
                 AssistChip(
-                    onClick = { },
-                    enabled = false,
-                    label = { Text(record.gameTypeLabel) }
-                )
-                AssistChip(
-                    onClick = { },
+                    onClick = {},
                     enabled = false,
                     label = { Text(AppStrings.WordBook.matched(record.wordProgress.size)) }
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(dims.controlSpacing)) {
-                FilledTonalButton(onClick = onToggleExpanded) {
-                    Text(
-                        if (expanded) AppStrings.Records.HIDE_DETAILS else AppStrings.Records.VIEW_DETAILS
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilledTonalButton(
+                    onClick = onToggleExpanded,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                        contentDescription = if (expanded) AppStrings.Accessibility.COLLAPSE else AppStrings.Accessibility.EXPAND
                     )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(if (expanded) AppStrings.Records.HIDE_DETAILS else AppStrings.Records.VIEW_DETAILS)
                 }
                 TextButton(onClick = onDelete) {
+                    Icon(Icons.Filled.Delete, contentDescription = AppStrings.Accessibility.DELETE)
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(AppStrings.Common.DELETE)
                 }
             }
             if (expanded) {
-                Card(
+                Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
-                    )
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(dims.cardPadding),
-                        verticalArrangement = Arrangement.spacedBy(dims.compactSpacing)
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(
-                            text = AppStrings.Records.LEARNED_WORDS,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        Text(AppStrings.Records.LEARNED_WORDS, style = MaterialTheme.typography.titleMedium)
                         HorizontalDivider()
                         if (record.wordProgress.isEmpty()) {
                             Text(
-                                text = AppStrings.Records.NO_LEARNED_WORDS,
+                                AppStrings.Records.NO_LEARNED_WORDS,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         } else {
-                            Column(verticalArrangement = Arrangement.spacedBy(dims.scaled(6.dp))) {
-                                record.wordProgress.forEachIndexed { index, progress ->
-                                    Text(
-                                        text = AppStrings.WordBook.numbered(index, progress.displayLabel),
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                }
+                            record.wordProgress.forEachIndexed { index, progress ->
+                                Text(
+                                    AppStrings.WordBook.numbered(index, progress.displayLabel),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
                             }
                         }
                     }
@@ -1091,23 +1087,8 @@ private fun RecordCard(
     }
 }
 
-private fun WordFilter.toDisplayName(): String {
-    return when (this) {
-        WordFilter.ALL -> AppStrings.Common.ALL
-        WordFilter.MASTERED -> AppStrings.Common.MASTERED
-        WordFilter.UNMASTERED -> AppStrings.Common.LEARNING
-    }
+private fun WordFilter.toDisplayName(): String = when (this) {
+    WordFilter.ALL -> AppStrings.Common.ALL
+    WordFilter.MASTERED -> AppStrings.Common.MASTERED
+    WordFilter.UNMASTERED -> AppStrings.Common.LEARNING
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
