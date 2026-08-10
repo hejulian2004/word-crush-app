@@ -9,8 +9,8 @@ import com.wordcrush.server.module.game.record.dto.DeleteGameRecordRequest;
 import com.wordcrush.server.module.game.record.dto.SaveGameRecordRequest;
 import com.wordcrush.server.module.game.record.entity.GameRecord;
 import com.wordcrush.server.module.game.record.repository.GameRecordRepository;
-import com.wordcrush.server.module.user.account.entity.UserAccount;
-import com.wordcrush.server.module.user.account.repository.UserAccountRepository;
+import com.wordcrush.server.module.user.api.UserDirectory;
+import com.wordcrush.server.module.user.api.UserSnapshot;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -27,7 +27,7 @@ class GameRecordServiceTest {
     private GameRecordRepository gameRecordRepository;
 
     @Mock
-    private UserAccountRepository userAccountRepository;
+    private UserDirectory userDirectory;
 
     @Mock
     private RankingCacheService rankingCacheService;
@@ -37,8 +37,6 @@ class GameRecordServiceTest {
 
     @Test
     void shouldEvictRankingCacheAfterAddingRecord() {
-        UserAccount user = new UserAccount();
-        user.setUsername("alice");
         SaveGameRecordRequest request = new SaveGameRecordRequest(
                 "alice",
                 0,
@@ -46,9 +44,10 @@ class GameRecordServiceTest {
                 "2026-04-03-10:11:12.345",
                 List.of("apple", "banana")
         );
-        when(userAccountRepository.findByUsername("alice")).thenReturn(Optional.of(user));
-        when(gameRecordRepository.existsByUserUsernameAndGameTypeAndScoreAndPlayedAt(
-                "alice",
+        when(userDirectory.requireUserByUsername("alice"))
+                .thenReturn(new UserSnapshot(1L, "alice", "USER", 1));
+        when(gameRecordRepository.existsByUserIdAndGameTypeAndScoreAndPlayedAt(
+                1L,
                 0,
                 25,
                 LocalDateTime.of(2026, 4, 3, 10, 11, 12, 345_000_000)))
@@ -62,8 +61,6 @@ class GameRecordServiceTest {
 
     @Test
     void shouldNotEvictRankingCacheWhenDuplicateRecordIsIgnored() {
-        UserAccount user = new UserAccount();
-        user.setUsername("alice");
         SaveGameRecordRequest request = new SaveGameRecordRequest(
                 "alice",
                 0,
@@ -71,9 +68,10 @@ class GameRecordServiceTest {
                 "2026-04-03-10:11:12.345",
                 List.of()
         );
-        when(userAccountRepository.findByUsername("alice")).thenReturn(Optional.of(user));
-        when(gameRecordRepository.existsByUserUsernameAndGameTypeAndScoreAndPlayedAt(
-                "alice",
+        when(userDirectory.requireUserByUsername("alice"))
+                .thenReturn(new UserSnapshot(1L, "alice", "USER", 1));
+        when(gameRecordRepository.existsByUserIdAndGameTypeAndScoreAndPlayedAt(
+                1L,
                 0,
                 25,
                 LocalDateTime.of(2026, 4, 3, 10, 11, 12, 345_000_000)))
@@ -94,8 +92,10 @@ class GameRecordServiceTest {
                 30,
                 "2026-04-03-10:11:12.345"
         );
-        when(gameRecordRepository.findFirstByUserUsernameAndGameTypeAndScoreAndPlayedAt(
-                "alice",
+        when(userDirectory.requireUserByUsername("alice"))
+                .thenReturn(new UserSnapshot(1L, "alice", "USER", 1));
+        when(gameRecordRepository.findFirstByUserIdAndGameTypeAndScoreAndPlayedAt(
+                1L,
                 1,
                 30,
                 LocalDateTime.of(2026, 4, 3, 10, 11, 12, 345_000_000)))

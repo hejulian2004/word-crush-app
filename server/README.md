@@ -23,11 +23,11 @@ server/src/main/java/com/wordcrush/server/
 ├── common/       # 统一响应、异常和公共组件
 ├── config/       # Spring、Web、OpenAPI 等配置
 ├── module/
-│   ├── user/     # 用户账号、登录、注册、头像
-│   ├── learning/ # 词库、学习状态、每日计划、同步
+│   ├── user/     # 用户账号、登录、注册、头像和用户公开 Facade
+│   ├── learning/ # 词库、学习状态、每日计划、同步和词库 Facade
 │   ├── game/     # 游戏记录和排行榜
-│   └── admin/    # 管理端鉴权、用户管理、词表管理
-└── security/     # JWT、Bearer Token 和当前用户上下文
+│   └── admin/    # 管理端 HTTP 适配器，只调用模块 Facade
+└── security/     # JWT、Bearer Token 和认证上下文契约
 
 src/main/resources/
 ├── application.yml
@@ -37,6 +37,14 @@ src/main/resources/
 ├── static/       # 头像和其他静态资源
 └── templates/    # resume.html 等服务端页面
 ```
+
+业务模块的 `api/` 包是跨模块唯一公开入口；账号、词库、游戏和管理端的
+Controller、Service、Repository、Entity 均属于模块内部实现。跨模块禁止引用
+对方的 Entity 或 Repository，用户关联在业务 Entity 中使用 `userId`，数据库仍
+保留原有 `user_id` 外键。安全实现只依赖 `security/api` 契约，不能依赖业务模块。
+
+模块边界由 `ModuleBoundaryTest` 中的 ArchUnit 规则持续校验。后端仍是一个可部署
+的 Spring Boot 单体应用，模块化只改变代码依赖方向，不拆分进程或数据库。
 
 ## 数据职责
 

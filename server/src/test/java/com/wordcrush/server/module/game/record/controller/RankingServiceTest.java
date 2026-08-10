@@ -9,10 +9,12 @@ import com.wordcrush.server.module.game.ranking.dto.RankingRequest;
 import com.wordcrush.server.module.game.ranking.response.RankingItemResponse;
 import com.wordcrush.server.module.game.record.entity.GameRecord;
 import com.wordcrush.server.module.game.record.repository.GameRecordRepository;
-import com.wordcrush.server.module.user.account.entity.UserAccount;
-import com.wordcrush.server.module.user.avatar.service.AvatarStorageService;
+import com.wordcrush.server.module.user.api.AvatarReader;
+import com.wordcrush.server.module.user.api.UserDirectory;
+import com.wordcrush.server.module.user.api.UserSnapshot;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -27,7 +29,10 @@ class RankingServiceTest {
     private GameRecordRepository gameRecordRepository;
 
     @Mock
-    private AvatarStorageService avatarStorageService;
+    private AvatarReader avatarReader;
+
+    @Mock
+    private UserDirectory userDirectory;
 
     @Mock
     private RankingCacheService rankingCacheService;
@@ -42,7 +47,7 @@ class RankingServiceTest {
                 new RankingCacheItem("bob", 20, "2026-04-03-10:01:00.000")
         );
         when(rankingCacheService.getRanking(0)).thenReturn(cached);
-        when(avatarStorageService.avatarVersion("alice")).thenReturn(11L);
+        when(avatarReader.avatarVersion("alice")).thenReturn(11L);
 
         List<RankingItemResponse> result = rankingService.getTopRankings(new RankingRequest(0, 1));
 
@@ -58,8 +63,12 @@ class RankingServiceTest {
         when(rankingCacheService.getRanking(0)).thenReturn(null);
         when(gameRecordRepository.findAllByGameTypeOrderByScoreDescPlayedAtAsc(0))
                 .thenReturn(List.of(aliceBest, aliceOlder, bob));
-        when(avatarStorageService.avatarVersion("alice")).thenReturn(111L);
-        when(avatarStorageService.avatarVersion("bob")).thenReturn(222L);
+        when(userDirectory.findByIds(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(Map.of(
+                        1L, new UserSnapshot(1L, "alice", "USER", 1),
+                        2L, new UserSnapshot(2L, "bob", "USER", 1)));
+        when(avatarReader.avatarVersion("alice")).thenReturn(111L);
+        when(avatarReader.avatarVersion("bob")).thenReturn(222L);
 
         List<RankingItemResponse> result = rankingService.getTopRankings(new RankingRequest(0, 2));
 
@@ -76,11 +85,8 @@ class RankingServiceTest {
     }
 
     private GameRecord record(String username, int score, LocalDateTime playedAt) {
-        UserAccount user = new UserAccount();
-        user.setUsername(username);
-
         GameRecord record = new GameRecord();
-        record.setUser(user);
+        record.setUserId("alice".equals(username) ? 1L : 2L);
         record.setScore(score);
         record.setPlayedAt(playedAt);
         return record;

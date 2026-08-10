@@ -1,16 +1,20 @@
 package com.wordcrush.server.module.game.ranking.service;
 
-import com.wordcrush.server.common.constant.GameType;
 import com.wordcrush.server.common.exception.BusinessException;
 import com.wordcrush.server.common.util.TimeFormats;
 import com.wordcrush.server.module.game.ranking.dto.RankingRequest;
 import com.wordcrush.server.module.game.ranking.response.RankingItemResponse;
+import com.wordcrush.server.module.game.api.GameType;
 import com.wordcrush.server.module.game.record.entity.GameRecord;
 import com.wordcrush.server.module.game.record.repository.GameRecordRepository;
-import com.wordcrush.server.module.user.avatar.service.AvatarStorageService;
+import com.wordcrush.server.module.user.api.AvatarReader;
+import com.wordcrush.server.module.user.api.UserDirectory;
+import com.wordcrush.server.module.user.api.UserSnapshot;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,7 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class RankingService {
 
     private final GameRecordRepository gameRecordRepository;
-    private final AvatarStorageService avatarStorageService;
+    private final UserDirectory userDirectory;
+    private final AvatarReader avatarReader;
     private final RankingCacheService rankingCacheService;
 
     @Transactional(readOnly = true)
@@ -45,21 +50,24 @@ public class RankingService {
                         item.username(),
                         item.score(),
                         item.time(),
-                        avatarStorageService.avatarVersion(item.username())
+                        avatarReader.avatarVersion(item.username())
                 ))
                 .toList();
     }
 
     private List<RankingCacheItem> loadRankingFromDatabase(Integer gameType) {
         List<GameRecord> records = gameRecordRepository.findAllByGameTypeOrderByScoreDescPlayedAtAsc(gameType);
+        Map<Long, UserSnapshot> users = userDirectory.findByIds(records.stream()
+                .map(GameRecord::getUserId)
+                .collect(Collectors.toSet()));
         LinkedHashMap<String, RankingCacheItem> rankingMap = new LinkedHashMap<>();
         for (GameRecord record : records) {
-            String username = record.getUser().getUsername();
-            if (rankingMap.containsKey(username)) {
+            UserSnapshot user = users.get(record.getUserId());
+            if (user == null || rankingMap.containsKey(user.username())) {
                 continue;
             }
-            rankingMap.put(username, new RankingCacheItem(
-                    username,
+            rankingMap.put(user.username(), new RankingCacheItem(
+                    user.username(),
                     record.getScore(),
                     TimeFormats.formatGameTime(record.getPlayedAt())
             ));

@@ -8,7 +8,8 @@
 - HTTP 客户端：Retrofit + OkHttp + Gson
 - 鉴权方式：`Authorization: Bearer <token>`
 - 不再支持 `token` 请求头或 query token
-- 当前处于开发阶段，服务端 schema 与接口可以直接演进，不额外维护旧接口兼容层。
+- 当前模块化重构保持既有接口路径、字段和统一响应结构；本次不新增 schema 迁移，
+  仅调整服务端内部模块边界和持久化映射。
 
 ## 统一响应
 

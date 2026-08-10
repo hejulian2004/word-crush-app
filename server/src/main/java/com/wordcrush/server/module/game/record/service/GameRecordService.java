@@ -1,7 +1,6 @@
 package com.wordcrush.server.module.game.record.service;
 
 import com.wordcrush.api.ApiCode;
-import com.wordcrush.server.common.constant.GameType;
 import com.wordcrush.server.common.exception.BusinessException;
 import com.wordcrush.server.common.util.TimeFormats;
 import com.wordcrush.server.module.game.ranking.service.RankingCacheService;
@@ -12,8 +11,9 @@ import com.wordcrush.server.module.game.record.entity.GameRecord;
 import com.wordcrush.server.module.game.record.entity.GameRecordWord;
 import com.wordcrush.server.module.game.record.repository.GameRecordRepository;
 import com.wordcrush.server.module.game.record.response.GameRecordResponse;
-import com.wordcrush.server.module.user.account.entity.UserAccount;
-import com.wordcrush.server.module.user.account.repository.UserAccountRepository;
+import com.wordcrush.server.module.game.api.GameType;
+import com.wordcrush.server.module.user.api.UserDirectory;
+import com.wordcrush.server.module.user.api.UserSnapshot;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +27,7 @@ import org.springframework.util.StringUtils;
 public class GameRecordService {
 
     private final GameRecordRepository gameRecordRepository;
-    private final UserAccountRepository userAccountRepository;
+    private final UserDirectory userDirectory;
     private final RankingCacheService rankingCacheService;
 
     @Transactional
@@ -44,18 +44,15 @@ public class GameRecordService {
             throw new BusinessException("time must not be blank");
         }
 
-        UserAccount user = loadUser(request.username());
+        UserSnapshot user = loadUser(request.username());
         LocalDateTime playedAt = TimeFormats.parseGameTime(request.time());
-        if (gameRecordRepository.existsByUserUsernameAndGameTypeAndScoreAndPlayedAt(
-                request.username(),
-                request.gameType(),
-                request.score(),
-                playedAt)) {
+        if (gameRecordRepository.existsByUserIdAndGameTypeAndScoreAndPlayedAt(
+                user.id(), request.gameType(), request.score(), playedAt)) {
             return;
         }
 
         GameRecord record = new GameRecord();
-        record.setUser(user);
+        record.setUserId(user.id());
         record.setGameType(request.gameType());
         record.setScore(request.score());
         record.setPlayedAt(playedAt);
@@ -78,13 +75,11 @@ public class GameRecordService {
             throw new BusinessException("time must not be blank");
         }
 
+        UserSnapshot user = loadUser(request.username());
         LocalDateTime playedAt = TimeFormats.parseGameTime(request.time());
         GameRecord record = gameRecordRepository
-                .findFirstByUserUsernameAndGameTypeAndScoreAndPlayedAt(
-                        request.username(),
-                        request.gameType(),
-                        request.score(),
-                        playedAt)
+                .findFirstByUserIdAndGameTypeAndScoreAndPlayedAt(
+                        user.id(), request.gameType(), request.score(), playedAt)
                 .orElseThrow(() -> new BusinessException(ApiCode.NOT_FOUND, "game record not found"));
         gameRecordRepository.delete(record);
         rankingCacheService.evictGameType(request.gameType());
@@ -96,11 +91,11 @@ public class GameRecordService {
             throw new BusinessException("request body must not be null");
         }
         validateUsername(request.username());
-        loadUser(request.username());
-        return gameRecordRepository.findByUserUsernameOrderByPlayedAtDesc(request.username())
+        UserSnapshot user = loadUser(request.username());
+        return gameRecordRepository.findByUserIdOrderByPlayedAtDesc(user.id())
                 .stream()
                 .map(record -> new GameRecordResponse(
-                        record.getUser().getUsername(),
+                        user.username(),
                         record.getGameType(),
                         record.getScore(),
                         TimeFormats.formatGameTime(record.getPlayedAt()),
@@ -109,9 +104,8 @@ public class GameRecordService {
                 .toList();
     }
 
-    private UserAccount loadUser(String username) {
-        return userAccountRepository.findByUsername(username)
-                .orElseThrow(() -> new BusinessException(ApiCode.NOT_FOUND, "user not found"));
+    private UserSnapshot loadUser(String username) {
+        return userDirectory.requireUserByUsername(username);
     }
 
     private void validateUsername(String username) {

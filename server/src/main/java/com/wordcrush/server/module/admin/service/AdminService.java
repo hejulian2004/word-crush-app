@@ -12,207 +12,116 @@ import com.wordcrush.server.module.admin.response.AdminPageResponse;
 import com.wordcrush.server.module.admin.response.AdminUserResponse;
 import com.wordcrush.server.module.admin.response.AdminWordResponse;
 import com.wordcrush.server.module.admin.response.WordImportResponse;
-import com.wordcrush.server.module.learning.entity.LearningWord;
-import com.wordcrush.server.module.learning.repository.LearningWordRepository;
-import com.wordcrush.server.module.user.account.entity.UserAccount;
-import com.wordcrush.server.module.user.account.repository.UserAccountRepository;
-import com.wordcrush.server.security.AuthenticatedUserContext;
-import com.wordcrush.server.security.TokenSession;
+import com.wordcrush.server.module.learning.api.LearningWordAdminFacade;
+import com.wordcrush.server.module.user.api.UserAdminFacade;
+import com.wordcrush.server.security.api.AuthenticatedUserContext;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
 public class AdminService {
 
-    private static final int ACTIVE_STATUS = 1;
+    private final UserAdminFacade userAdminFacade;
+    private final LearningWordAdminFacade learningWordAdminFacade;
 
-    private final UserAccountRepository userAccountRepository;
-    private final LearningWordRepository learningWordRepository;
-    private final PasswordEncoder passwordEncoder;
-
-    @Transactional(readOnly = true)
     public AdminMeResponse me() {
-        UserAccount admin = requireAdmin();
-        return new AdminMeResponse(admin.getId(), admin.getUsername(), admin.getRole());
+        UserAdminFacade.AdminUserView admin = userAdminFacade.currentAdmin(operatorId());
+        return new AdminMeResponse(admin.id(), admin.username(), admin.role());
     }
 
-    @Transactional(readOnly = true)
     public AdminOverviewResponse overview() {
-        requireAdmin();
-        List<UserAccount> users = userAccountRepository.findAll();
-        List<LearningWord> words = learningWordRepository.findAll();
+        Long operatorId = operatorId();
+        UserAdminFacade.AdminSummary users = userAdminFacade.summary(operatorId);
+        LearningWordAdminFacade.WordSummary words = learningWordAdminFacade.summary(operatorId);
         return new AdminOverviewResponse(
-                users.size(),
-                users.stream().filter(this::isActive).count(),
-                words.size(),
-                words.stream().filter(this::isActive).count()
-        );
+                users.totalUsers(), users.activeUsers(), words.totalWords(), words.activeWords());
     }
 
-    @Transactional(readOnly = true)
-    public AdminPageResponse<AdminUserResponse> listUsers(String query, Integer status, Integer page, Integer size) {
-        requireAdmin();
-        String normalizedQuery = normalize(query);
-        List<AdminUserResponse> filtered = userAccountRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"))
-                .stream()
-                .filter(user -> normalizedQuery.isBlank()
-                        || user.getUsername().toLowerCase().contains(normalizedQuery))
-                .filter(user -> status == null || status.equals(user.getStatus()))
-                .map(this::toUserResponse)
-                .toList();
-        return page(filtered, page, size);
+    public AdminPageResponse<AdminUserResponse> listUsers(
+            String query,
+            Integer status,
+            Integer page,
+            Integer size
+    ) {
+        UserAdminFacade.AdminUserPage result = userAdminFacade.listUsers(
+                operatorId(), query, status, page, size);
+        return new AdminPageResponse<>(
+                result.items().stream().map(this::toUserResponse).toList(),
+                result.page(), result.size(), result.total());
     }
 
-    @Transactional
     public AdminUserResponse updateUserStatus(Long userId, UpdateUserStatusRequest request) {
-        UserAccount admin = requireAdmin();
-        UserAccount user = findUser(userId);
-        int nextStatus = normalizeStatus(request.status());
-        if (admin.getId().equals(user.getId()) && nextStatus == 0) {
-            throw new BusinessException(ApiCode.BAD_REQUEST, "cannot disable the current admin account");
-        }
-        if (nextStatus == 0 && UserAccount.ROLE_ADMIN.equals(user.getRole())
-                && activeAdminCount() <= 1) {
-            throw new BusinessException(ApiCode.BAD_REQUEST, "at least one active admin is required");
-        }
-        user.setStatus(nextStatus);
-        return toUserResponse(userAccountRepository.save(user));
+        return toUserResponse(userAdminFacade.updateUserStatus(operatorId(), userId, request.status()));
     }
 
-    @Transactional
     public void resetPassword(Long userId, ResetPasswordRequest request) {
-        requireAdmin();
-        UserAccount user = findUser(userId);
-        user.setPasswordHash(passwordEncoder.encode(request.password()));
-        userAccountRepository.save(user);
+        userAdminFacade.resetPassword(operatorId(), userId, request.password());
     }
 
-    @Transactional(readOnly = true)
-    public AdminPageResponse<AdminWordResponse> listWords(String query, Integer status, Integer page, Integer size) {
-        requireAdmin();
-        String normalizedQuery = normalize(query);
-        List<AdminWordResponse> filtered = learningWordRepository.findAll(Sort.by(Sort.Direction.ASC, "id"))
-                .stream()
-                .filter(word -> normalizedQuery.isBlank()
-                        || word.getEnglish().toLowerCase().contains(normalizedQuery)
-                        || word.getChinese().toLowerCase().contains(normalizedQuery)
-                        || word.getPronunciation().toLowerCase().contains(normalizedQuery))
-                .filter(word -> status == null || status.equals(word.getStatus()))
-                .map(this::toWordResponse)
-                .toList();
-        return page(filtered, page, size);
+    public AdminPageResponse<AdminWordResponse> listWords(
+            String query,
+            Integer status,
+            Integer page,
+            Integer size
+    ) {
+        LearningWordAdminFacade.WordPage result = learningWordAdminFacade.listWords(
+                operatorId(), query, status, page, size);
+        return new AdminPageResponse<>(
+                result.items().stream().map(this::toWordResponse).toList(),
+                result.page(), result.size(), result.total());
     }
 
-    @Transactional
     public AdminWordResponse createWord(CreateWordRequest request) {
-        requireAdmin();
-        if (request.id() <= 0 || learningWordRepository.existsById(request.id())) {
-            throw new BusinessException(ApiCode.CONFLICT, "word id already exists or is invalid");
-        }
-        LearningWord word = new LearningWord();
-        word.setId(request.id());
-        word.setEnglish(request.english().trim());
-        word.setPronunciation(request.pronunciation().trim());
-        word.setChinese(request.chinese().trim());
-        word.setContentVersion(1L);
-        word.setStatus(ACTIVE_STATUS);
-        return toWordResponse(learningWordRepository.save(word));
+        return toWordResponse(learningWordAdminFacade.createWord(
+                operatorId(), request.id(), request.english(), request.pronunciation(), request.chinese()));
     }
 
-    @Transactional
     public AdminWordResponse updateWord(Integer wordId, UpdateWordRequest request) {
-        requireAdmin();
-        LearningWord word = findWord(wordId);
-        int nextStatus = normalizeStatus(request.status());
-        String english = request.english().trim();
-        String pronunciation = request.pronunciation().trim();
-        String chinese = request.chinese().trim();
-        boolean contentChanged = !english.equals(word.getEnglish())
-                || !pronunciation.equals(word.getPronunciation())
-                || !chinese.equals(word.getChinese());
-        word.setEnglish(english);
-        word.setPronunciation(pronunciation);
-        word.setChinese(chinese);
-        word.setStatus(nextStatus);
-        if (contentChanged) {
-            word.setContentVersion((word.getContentVersion() == null ? 0L : word.getContentVersion()) + 1);
-        }
-        return toWordResponse(learningWordRepository.save(word));
+        return toWordResponse(learningWordAdminFacade.updateWord(
+                operatorId(), wordId, request.english(), request.pronunciation(), request.chinese(), request.status()));
     }
 
-    @Transactional
     public WordImportResponse importWords(MultipartFile file, boolean replace) {
-        requireAdmin();
         if (file == null || file.isEmpty()) {
             throw new BusinessException(ApiCode.BAD_REQUEST, "csv file must not be empty");
         }
         CsvParseResult parsed = parseCsv(file);
-        List<CsvWord> incoming = parsed.words();
-        Map<Integer, LearningWord> existing = learningWordRepository.findAll().stream()
-                .collect(Collectors.toMap(LearningWord::getId, word -> word));
-        Set<Integer> incomingIds = incoming.stream().map(CsvWord::id).collect(Collectors.toSet());
-        int added = 0;
-        int updated = 0;
-        int disabled = 0;
-
-        for (CsvWord row : incoming) {
-            LearningWord word = existing.get(row.id());
-            if (word == null) {
-                word = new LearningWord();
-                word.setId(row.id());
-                word.setContentVersion(1L);
-                added++;
-            } else if (!row.english().equals(word.getEnglish())
-                    || !row.pronunciation().equals(word.getPronunciation())
-                    || !row.chinese().equals(word.getChinese())
-                    || !Integer.valueOf(ACTIVE_STATUS).equals(word.getStatus())) {
-                word.setContentVersion((word.getContentVersion() == null ? 0L : word.getContentVersion()) + 1);
-                updated++;
-            }
-            word.setEnglish(row.english());
-            word.setPronunciation(row.pronunciation());
-            word.setChinese(row.chinese());
-            word.setStatus(ACTIVE_STATUS);
-            existing.put(row.id(), word);
-        }
-
-        if (replace) {
-            for (LearningWord word : existing.values()) {
-                if (!incomingIds.contains(word.getId()) && isActive(word)) {
-                    word.setStatus(0);
-                    disabled++;
-                }
-            }
-        }
-        learningWordRepository.saveAll(existing.values());
-        return new WordImportResponse(added, updated, disabled, incoming.size(), parsed.skipped());
+        List<LearningWordAdminFacade.WordImportRow> rows = parsed.words().stream()
+                .map(row -> new LearningWordAdminFacade.WordImportRow(
+                        row.id(), row.english(), row.pronunciation(), row.chinese()))
+                .toList();
+        LearningWordAdminFacade.WordImportResult result = learningWordAdminFacade.importWords(
+                operatorId(), rows, replace, parsed.skipped());
+        return new WordImportResponse(
+                result.added(), result.updated(), result.disabled(), result.total(), result.skipped());
     }
 
-    @Transactional(readOnly = true)
     public byte[] exportWords() {
-        requireAdmin();
-        StringBuilder csv = new StringBuilder("id,english,pronunciation,chinese\n");
-        learningWordRepository.findAll(Sort.by(Sort.Direction.ASC, "id")).stream()
-                .filter(this::isActive)
-                .forEach(word -> csv.append(word.getId())
-                        .append(',').append(csvField(word.getEnglish()))
-                        .append(',').append(csvField(word.getPronunciation()))
-                        .append(',').append(csvField(word.getChinese()))
-                        .append('\n'));
-        return ("\uFEFF" + csv).getBytes(StandardCharsets.UTF_8);
+        return learningWordAdminFacade.exportWords(operatorId());
+    }
+
+    private Long operatorId() {
+        return AuthenticatedUserContext.requireCurrentSession().userId();
+    }
+
+    private AdminUserResponse toUserResponse(UserAdminFacade.AdminUserView user) {
+        return new AdminUserResponse(
+                user.id(), user.username(), user.role(), user.status(), user.createdAt(), user.updatedAt());
+    }
+
+    private AdminWordResponse toWordResponse(LearningWordAdminFacade.WordView word) {
+        return new AdminWordResponse(
+                word.id(), word.english(), word.pronunciation(), word.chinese(),
+                word.contentVersion(), word.status(), word.createdAt(), word.updatedAt());
     }
 
     private CsvParseResult parseCsv(MultipartFile file) {
@@ -306,71 +215,6 @@ public class AdminService {
         return rows;
     }
 
-    private UserAccount requireAdmin() {
-        TokenSession session = AuthenticatedUserContext.requireCurrentSession();
-        UserAccount user = userAccountRepository.findById(session.userId())
-                .orElseThrow(() -> new BusinessException(ApiCode.UNAUTHORIZED, "invalid token"));
-        if (!isActive(user) || !UserAccount.ROLE_ADMIN.equals(user.getRole())) {
-            throw new BusinessException(ApiCode.FORBIDDEN, "admin access required");
-        }
-        return user;
-    }
-
-    private UserAccount findUser(Long userId) {
-        return userAccountRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ApiCode.NOT_FOUND, "user not found"));
-    }
-
-    private LearningWord findWord(Integer wordId) {
-        return learningWordRepository.findById(wordId)
-                .orElseThrow(() -> new BusinessException(ApiCode.NOT_FOUND, "word not found"));
-    }
-
-    private long activeAdminCount() {
-        return userAccountRepository.findAll().stream()
-                .filter(user -> UserAccount.ROLE_ADMIN.equals(user.getRole()) && isActive(user))
-                .count();
-    }
-
-    private int normalizeStatus(Integer status) {
-        if (status == null || (status != 0 && status != 1)) {
-            throw new BusinessException(ApiCode.BAD_REQUEST, "status must be 0 or 1");
-        }
-        return status;
-    }
-
-    private boolean isActive(UserAccount user) {
-        return Integer.valueOf(ACTIVE_STATUS).equals(user.getStatus());
-    }
-
-    private boolean isActive(LearningWord word) {
-        return Integer.valueOf(ACTIVE_STATUS).equals(word.getStatus());
-    }
-
-    private String normalize(String value) {
-        return value == null ? "" : value.trim().toLowerCase();
-    }
-
-    private AdminUserResponse toUserResponse(UserAccount user) {
-        return new AdminUserResponse(
-                user.getId(), user.getUsername(), user.getRole(), user.getStatus(),
-                user.getCreatedAt(), user.getUpdatedAt());
-    }
-
-    private AdminWordResponse toWordResponse(LearningWord word) {
-        return new AdminWordResponse(
-                word.getId(), word.getEnglish(), word.getPronunciation(), word.getChinese(),
-                word.getContentVersion(), word.getStatus(), word.getCreatedAt(), word.getUpdatedAt());
-    }
-
-    private <T> AdminPageResponse<T> page(List<T> items, Integer page, Integer size) {
-        int normalizedPage = Math.max(page == null ? 0 : page, 0);
-        int normalizedSize = Math.min(Math.max(size == null ? 20 : size, 1), 100);
-        int from = Math.min(normalizedPage * normalizedSize, items.size());
-        int to = Math.min(from + normalizedSize, items.size());
-        return new AdminPageResponse<>(items.subList(from, to), normalizedPage, normalizedSize, items.size());
-    }
-
     private Integer parseInteger(String value) {
         try {
             return Integer.valueOf(value.replace("\uFEFF", "").trim());
@@ -393,16 +237,6 @@ public class AdminService {
                 || first.equals("序号")
                 || first.equals("编号")
                 || (second.equals("单词") && !isInteger(first));
-    }
-
-    private String csvField(String value) {
-        if (value == null) {
-            return "";
-        }
-        String escaped = value.replace("\"", "\"\"");
-        return escaped.contains(",") || escaped.contains("\n") || escaped.contains("\r")
-                ? "\"" + escaped + "\""
-                : escaped;
     }
 
     private record CsvWord(Integer id, String english, String pronunciation, String chinese) {

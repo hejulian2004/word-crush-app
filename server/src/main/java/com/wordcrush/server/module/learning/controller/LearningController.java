@@ -7,9 +7,10 @@ import com.wordcrush.server.module.learning.response.CatalogResponse;
 import com.wordcrush.server.module.learning.response.LearningStateResponse;
 import com.wordcrush.server.module.learning.response.LearningSyncResponse;
 import com.wordcrush.server.module.learning.service.LearningService;
-import com.wordcrush.server.security.AuthenticatedUserContext;
+import com.wordcrush.server.security.api.AuthenticatedUserContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
@@ -58,14 +59,14 @@ public class LearningController {
 
     @PutMapping("/settings/daily-target")
     @Operation(summary = "更新每日学习数量")
-    public ApiResponse<LearningStateResponse> updateDailyTarget(@RequestBody DailyTargetRequest request) {
+    public ApiResponse<LearningStateResponse> updateDailyTarget(@Valid @RequestBody DailyTargetRequest request) {
         return ApiResponse.success(learningService.updateDailyTarget(
                 AuthenticatedUserContext.requireCurrentSession(), request));
     }
 
     @PostMapping("/sync")
     @Operation(summary = "同步离线学习进度")
-    public ApiResponse<LearningSyncResponse> sync(@RequestBody LearningSyncRequest request) {
+    public ApiResponse<LearningSyncResponse> sync(@Valid @RequestBody LearningSyncRequest request) {
         return ApiResponse.success(learningService.sync(
                 AuthenticatedUserContext.requireCurrentSession(), request));
     }

@@ -8,8 +8,8 @@ import com.wordcrush.server.module.user.account.dto.LoginRequest;
 import com.wordcrush.server.module.user.account.entity.UserAccount;
 import com.wordcrush.server.module.user.account.repository.UserAccountRepository;
 import com.wordcrush.server.module.user.account.response.UserResponse;
-import com.wordcrush.server.security.TokenService;
-import com.wordcrush.server.security.TokenSession;
+import com.wordcrush.server.security.api.TokenIssuer;
+import com.wordcrush.server.security.api.TokenSession;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -30,7 +30,7 @@ class UserServiceTest {
     private PasswordEncoder passwordEncoder;
 
     @Mock
-    private TokenService tokenService;
+    private TokenIssuer tokenIssuer;
 
     @InjectMocks
     private UserService userService;
@@ -52,13 +52,13 @@ class UserServiceTest {
 
         when(userAccountRepository.findByUsername("admin")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("123456", "encoded-password")).thenReturn(true);
-        when(tokenService.issueToken(user)).thenReturn(session);
+        when(tokenIssuer.issueToken(1L, "admin")).thenReturn(session);
 
         UserResponse response = userService.login(new LoginRequest("admin", "123456"));
 
         assertThat(response.token()).isEqualTo("fresh-token");
-        InOrder inOrder = inOrder(tokenService);
-        inOrder.verify(tokenService).revokeUserTokens(1L);
-        inOrder.verify(tokenService).issueToken(user);
+        InOrder inOrder = inOrder(tokenIssuer);
+        inOrder.verify(tokenIssuer).revokeUserTokens(1L);
+        inOrder.verify(tokenIssuer).issueToken(1L, "admin");
     }
 }

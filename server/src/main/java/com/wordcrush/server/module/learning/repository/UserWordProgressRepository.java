@@ -10,11 +10,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface UserWordProgressRepository extends JpaRepository<UserWordProgress, Long> {
 
     @EntityGraph(attributePaths = {"word"})
-    List<UserWordProgress> findByUser_Id(Long userId);
+    List<UserWordProgress> findByUserId(Long userId);
 
     @EntityGraph(attributePaths = {"word"})
-    List<UserWordProgress> findByUser_IdAndWord_IdIn(Long userId, Collection<Integer> wordIds);
+    List<UserWordProgress> findByUserIdAndWord_IdIn(Long userId, Collection<Integer> wordIds);
 
     @EntityGraph(attributePaths = {"word"})
-    Optional<UserWordProgress> findByUser_IdAndWord_Id(Long userId, Integer wordId);
+    Optional<UserWordProgress> findByUserIdAndWord_Id(Long userId, Integer wordId);
 }

@@ -1,4 +1,4 @@
-package com.wordcrush.server.common.constant;
+package com.wordcrush.server.module.game.api;
 
 import com.wordcrush.api.ApiCode;
 import com.wordcrush.server.common.exception.BusinessException;

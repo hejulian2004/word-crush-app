@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface LearningSyncMutationRepository extends JpaRepository<LearningSyncMutation, Long> {
 
-    Optional<LearningSyncMutation> findByUser_IdAndMutationId(Long userId, String mutationId);
+    Optional<LearningSyncMutation> findByUserIdAndMutationId(Long userId, String mutationId);
 }

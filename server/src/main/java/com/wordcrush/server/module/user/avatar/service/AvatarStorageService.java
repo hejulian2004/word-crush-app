@@ -3,6 +3,7 @@ package com.wordcrush.server.module.user.avatar.service;
 import com.wordcrush.api.ApiCode;
 import com.wordcrush.server.common.exception.BusinessException;
 import com.wordcrush.server.module.user.account.repository.UserAccountRepository;
+import com.wordcrush.server.module.user.api.AvatarReader;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.charset.StandardCharsets;
@@ -23,7 +24,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
-public class AvatarStorageService {
+public class AvatarStorageService implements AvatarReader {
 
     private static final List<String> ALLOWED_EXTENSIONS = List.of("jpg", "jpeg", "png", "webp");
 
@@ -99,6 +100,7 @@ public class AvatarStorageService {
         return "/api/user/avatar/" + username;
     }
 
+    @Override
     public long avatarVersion(String username) {
         Long cached = avatarCacheService.getAvatarVersion(username);
         if (cached != null) {

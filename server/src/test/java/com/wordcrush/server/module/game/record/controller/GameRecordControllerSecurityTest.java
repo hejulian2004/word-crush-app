@@ -15,7 +15,7 @@ import com.wordcrush.server.module.game.record.dto.SaveGameRecordRequest;
 import com.wordcrush.server.module.game.record.dto.UsernameRequest;
 import com.wordcrush.server.module.game.record.service.GameRecordService;
 import com.wordcrush.server.security.TokenService;
-import com.wordcrush.server.security.TokenSession;
+import com.wordcrush.server.security.api.TokenSession;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;

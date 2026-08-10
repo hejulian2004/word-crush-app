@@ -9,5 +9,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface UserDailyPlanRepository extends JpaRepository<UserDailyPlan, Long> {
 
     @EntityGraph(attributePaths = {"items", "items.word"})
-    Optional<UserDailyPlan> findByUser_IdAndPlanDate(Long userId, LocalDate planDate);
+    Optional<UserDailyPlan> findByUserIdAndPlanDate(Long userId, LocalDate planDate);
 }

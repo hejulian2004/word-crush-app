@@ -1,16 +1,12 @@
 package com.wordcrush.server.module.game.record.entity;
 
 import com.wordcrush.server.common.persistence.BaseEntity;
-import com.wordcrush.server.module.user.account.entity.UserAccount;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
@@ -37,9 +33,8 @@ public class GameRecord extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    private UserAccount user;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
     @JdbcTypeCode(SqlTypes.TINYINT)
     @Column(name = "game_type", nullable = false)

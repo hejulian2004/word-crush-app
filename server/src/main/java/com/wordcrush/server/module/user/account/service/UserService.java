@@ -7,8 +7,8 @@ import com.wordcrush.server.module.user.account.dto.RegisterRequest;
 import com.wordcrush.server.module.user.account.entity.UserAccount;
 import com.wordcrush.server.module.user.account.repository.UserAccountRepository;
 import com.wordcrush.server.module.user.account.response.UserResponse;
-import com.wordcrush.server.security.TokenService;
-import com.wordcrush.server.security.TokenSession;
+import com.wordcrush.server.security.api.TokenIssuer;
+import com.wordcrush.server.security.api.TokenSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,7 +20,7 @@ public class UserService {
 
     private final UserAccountRepository userAccountRepository;
     private final PasswordEncoder passwordEncoder;
-    private final TokenService tokenService;
+    private final TokenIssuer tokenIssuer;
 
     @Transactional(readOnly = true)
     public UserResponse login(LoginRequest request) {
@@ -32,8 +32,8 @@ public class UserService {
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new BusinessException(ApiCode.UNAUTHORIZED, "invalid username or password");
         }
-        tokenService.revokeUserTokens(user.getId());
-        return toUserResponse(user, tokenService.issueToken(user));
+        tokenIssuer.revokeUserTokens(user.getId());
+        return toUserResponse(user, tokenIssuer.issueToken(user.getId(), user.getUsername()));
     }
 
     @Transactional(readOnly = true)
@@ -55,7 +55,7 @@ public class UserService {
         user.setStatus(1);
         user.setRole(UserAccount.ROLE_USER);
         userAccountRepository.save(user);
-        return toUserResponse(user, tokenService.issueToken(user));
+        return toUserResponse(user, tokenIssuer.issueToken(user.getId(), user.getUsername()));
     }
 
     @Transactional
@@ -66,7 +66,7 @@ public class UserService {
             throw new BusinessException(ApiCode.BAD_REQUEST, "old password is incorrect");
         }
         user.setPasswordHash(passwordEncoder.encode(newPassword));
-        tokenService.revokeUserTokens(user.getId());
+        tokenIssuer.revokeUserTokens(user.getId());
     }
 
     private UserResponse toUserResponse(UserAccount user, TokenSession session) {

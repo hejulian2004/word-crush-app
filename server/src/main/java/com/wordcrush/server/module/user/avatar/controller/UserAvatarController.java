@@ -3,7 +3,7 @@ package com.wordcrush.server.module.user.avatar.controller;
 import com.wordcrush.server.common.api.ApiResponse;
 import com.wordcrush.server.module.user.avatar.response.AvatarUploadResponse;
 import com.wordcrush.server.module.user.avatar.service.AvatarStorageService;
-import com.wordcrush.server.security.AuthenticatedUserContext;
+import com.wordcrush.server.security.api.AuthenticatedUserContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotBlank;

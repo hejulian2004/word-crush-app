@@ -9,9 +9,10 @@ import com.wordcrush.server.module.game.record.dto.SaveGameRecordRequest;
 import com.wordcrush.server.module.game.record.dto.UsernameRequest;
 import com.wordcrush.server.module.game.record.response.GameRecordResponse;
 import com.wordcrush.server.module.game.record.service.GameRecordService;
-import com.wordcrush.server.security.AuthenticatedUserContext;
+import com.wordcrush.server.security.api.AuthenticatedUserContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,13 +31,13 @@ public class GameRecordController {
 
     @PostMapping("/getTopNRecord")
     @Operation(summary = "鑾峰彇鎺掕姒?")
-    public ApiResponse<List<RankingItemResponse>> getTopNRecord(@RequestBody RankingRequest request) {
+    public ApiResponse<List<RankingItemResponse>> getTopNRecord(@Valid @RequestBody RankingRequest request) {
         return ApiResponse.success(rankingService.getTopRankings(request));
     }
 
     @PostMapping("/addGameRecord")
     @Operation(summary = "鏂板娓告垙璁板綍")
-    public ApiResponse<Void> addGameRecord(@RequestBody SaveGameRecordRequest request) {
+    public ApiResponse<Void> addGameRecord(@Valid @RequestBody SaveGameRecordRequest request) {
         if (request != null) {
             AuthenticatedUserContext.requireAccessToUsername(request.username());
         }
@@ -46,7 +47,7 @@ public class GameRecordController {
 
     @PostMapping("/deleteGameRecord")
     @Operation(summary = "鍒犻櫎娓告垙璁板綍")
-    public ApiResponse<Void> deleteGameRecord(@RequestBody DeleteGameRecordRequest request) {
+    public ApiResponse<Void> deleteGameRecord(@Valid @RequestBody DeleteGameRecordRequest request) {
         if (request != null) {
             AuthenticatedUserContext.requireAccessToUsername(request.username());
         }
@@ -56,7 +57,7 @@ public class GameRecordController {
 
     @PostMapping("/getAllGameRecord")
     @Operation(summary = "鑾峰彇鐢ㄦ埛鍏ㄩ儴娓告垙璁板綍")
-    public ApiResponse<List<GameRecordResponse>> getAllGameRecord(@RequestBody UsernameRequest request) {
+    public ApiResponse<List<GameRecordResponse>> getAllGameRecord(@Valid @RequestBody UsernameRequest request) {
         if (request != null) {
             AuthenticatedUserContext.requireAccessToUsername(request.username());
         }

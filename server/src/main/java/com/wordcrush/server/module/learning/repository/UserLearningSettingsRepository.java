@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface UserLearningSettingsRepository extends JpaRepository<UserLearningSettings, Long> {
 
-    Optional<UserLearningSettings> findByUser_Id(Long userId);
+    Optional<UserLearningSettings> findByUserId(Long userId);
 }

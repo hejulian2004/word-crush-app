@@ -18,7 +18,7 @@ import com.wordcrush.server.module.learning.response.LearningStateResponse;
 import com.wordcrush.server.module.learning.response.LearningSyncResponse;
 import com.wordcrush.server.module.learning.response.WordResponse;
 import com.wordcrush.server.module.learning.service.LearningService;
-import com.wordcrush.server.security.TokenSession;
+import com.wordcrush.server.security.api.TokenSession;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;

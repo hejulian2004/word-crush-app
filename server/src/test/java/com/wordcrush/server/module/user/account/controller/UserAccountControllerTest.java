@@ -16,7 +16,7 @@ import com.wordcrush.server.module.user.account.dto.LoginRequest;
 import com.wordcrush.server.module.user.account.dto.RegisterRequest;
 import com.wordcrush.server.module.user.account.response.UserResponse;
 import com.wordcrush.server.module.user.account.service.UserService;
-import com.wordcrush.server.security.TokenSession;
+import com.wordcrush.server.security.api.TokenSession;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;

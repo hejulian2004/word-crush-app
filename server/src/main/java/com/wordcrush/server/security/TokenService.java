@@ -5,7 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wordcrush.api.ApiCode;
 import com.wordcrush.server.common.exception.BusinessException;
 import com.wordcrush.server.config.JwtProperties;
-import com.wordcrush.server.module.user.account.entity.UserAccount;
+import com.wordcrush.server.security.api.TokenIssuer;
+import com.wordcrush.server.security.api.TokenSession;
 import io.jsonwebtoken.Claims;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -18,7 +19,7 @@ import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
-public class TokenService {
+public class TokenService implements TokenIssuer {
 
     private final StringRedisTemplate stringRedisTemplate;
     private final ObjectMapper objectMapper;
@@ -31,11 +32,12 @@ public class TokenService {
     @Value("${app.token.user-prefix}")
     private String userTokenPrefix;
 
-    public TokenSession issueToken(UserAccount user) {
-        String token = jwtTokenProvider.generateToken(user.getId(), user.getUsername());
+    @Override
+    public TokenSession issueToken(Long userId, String username) {
+        String token = jwtTokenProvider.generateToken(userId, username);
         LocalDateTime issuedAt = LocalDateTime.now();
         LocalDateTime expiresAt = issuedAt.plusHours(jwtProperties.getExpirationHours());
-        TokenSession session = new TokenSession(user.getId(), user.getUsername(), token, issuedAt, expiresAt);
+        TokenSession session = new TokenSession(userId, username, token, issuedAt, expiresAt);
         persistSession(session, Duration.ofHours(jwtProperties.getExpirationHours()));
         return session;
     }

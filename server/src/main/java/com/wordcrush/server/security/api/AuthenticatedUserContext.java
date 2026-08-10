@@ -1,4 +1,4 @@
-package com.wordcrush.server.security;
+package com.wordcrush.server.security.api;
 
 import com.wordcrush.api.ApiCode;
 import com.wordcrush.server.common.exception.BusinessException;
@@ -6,6 +6,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.StringUtils;
 
+/**
+ * Narrow security boundary used by HTTP adapters. It exposes only the
+ * authenticated session and ownership check, never persistence entities.
+ */
 public final class AuthenticatedUserContext {
 
     private AuthenticatedUserContext() {

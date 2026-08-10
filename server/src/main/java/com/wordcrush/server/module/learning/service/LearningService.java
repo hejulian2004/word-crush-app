@@ -22,9 +22,8 @@ import com.wordcrush.server.module.learning.response.LearningStateResponse;
 import com.wordcrush.server.module.learning.response.LearningSyncResponse;
 import com.wordcrush.server.module.learning.response.ProgressResponse;
 import com.wordcrush.server.module.learning.response.WordResponse;
-import com.wordcrush.server.module.user.account.entity.UserAccount;
-import com.wordcrush.server.module.user.account.repository.UserAccountRepository;
-import com.wordcrush.server.security.TokenSession;
+import com.wordcrush.server.module.user.api.UserDirectory;
+import com.wordcrush.server.security.api.TokenSession;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -54,7 +53,7 @@ public class LearningService {
     private final UserLearningSettingsRepository settingsRepository;
     private final UserDailyPlanRepository dailyPlanRepository;
     private final LearningSyncMutationRepository mutationRepository;
-    private final UserAccountRepository userAccountRepository;
+    private final UserDirectory userDirectory;
 
     @Transactional(readOnly = true)
     public CatalogResponse getCatalog(
@@ -65,13 +64,13 @@ public class LearningService {
             Integer page,
             Integer size
     ) {
-        UserAccount user = loadUser(session);
+        long userId = loadUserId(session);
         int normalizedPage = Math.max(page == null ? 0 : page, 0);
         int normalizedSize = Math.min(Math.max(size == null ? 100 : size, 1), 1000);
         List<LearningWord> words = ids == null || ids.isEmpty()
                 ? learningWordRepository.findAllByStatusOrderByIdAsc(ACTIVE_STATUS)
                 : learningWordRepository.findAllByIdInAndStatusOrderByIdAsc(ids, ACTIVE_STATUS);
-        Map<Integer, UserWordProgress> progress = progressMap(user.getId(), words.stream()
+        Map<Integer, UserWordProgress> progress = progressMap(userId, words.stream()
                 .map(LearningWord::getId)
                 .toList());
         String normalizedQuery = query == null ? "" : query.trim().toLowerCase();
@@ -99,26 +98,26 @@ public class LearningService {
 
     @Transactional
     public LearningStateResponse getState(TokenSession session) {
-        UserAccount user = loadUser(session);
-        UserLearningSettings settings = getOrCreateSettings(user);
-        UserDailyPlan plan = ensureDailyPlan(user, settings.getDailyTarget());
-        return buildState(user, settings.getDailyTarget(), plan);
+        long userId = loadUserId(session);
+        UserLearningSettings settings = getOrCreateSettings(userId);
+        UserDailyPlan plan = ensureDailyPlan(userId, settings.getDailyTarget());
+        return buildState(userId, settings.getDailyTarget(), plan);
     }
 
     @Transactional
     public LearningStateResponse updateDailyTarget(TokenSession session, DailyTargetRequest request) {
-        UserAccount user = loadUser(session);
+        long userId = loadUserId(session);
         int target = validateDailyTarget(request == null ? null : request.dailyTarget());
-        UserLearningSettings settings = getOrCreateSettings(user);
+        UserLearningSettings settings = getOrCreateSettings(userId);
         settings.setDailyTarget(target);
         settingsRepository.save(settings);
-        UserDailyPlan plan = ensureDailyPlan(user, target);
-        return buildState(user, target, plan);
+        UserDailyPlan plan = ensureDailyPlan(userId, target);
+        return buildState(userId, target, plan);
     }
 
     @Transactional
     public LearningSyncResponse sync(TokenSession session, LearningSyncRequest request) {
-        UserAccount user = loadUser(session);
+        long userId = loadUserId(session);
         List<LearningMutationRequest> mutations = request == null || request.mutations() == null
                 ? List.of()
                 : request.mutations();
@@ -129,23 +128,23 @@ public class LearningService {
         List<String> accepted = new ArrayList<>();
         for (LearningMutationRequest mutation : mutations) {
             validateMutation(mutation);
-            if (mutationRepository.findByUser_IdAndMutationId(user.getId(), mutation.mutationId()).isPresent()) {
+            if (mutationRepository.findByUserIdAndMutationId(userId, mutation.mutationId()).isPresent()) {
                 accepted.add(mutation.mutationId());
                 continue;
             }
 
             switch (mutation.operation()) {
-                case UPDATE_DAILY_TARGET -> updateTargetFromMutation(user, mutation);
+                case UPDATE_DAILY_TARGET -> updateTargetFromMutation(userId, mutation);
                 case CORRECT_MATCH, MARK_UNREMEMBERED, IMPORT_SNAPSHOT ->
-                        applyWordMutation(user, mutation);
+                        applyWordMutation(userId, mutation);
             }
-            saveMutation(user, mutation);
+            saveMutation(userId, mutation);
             accepted.add(mutation.mutationId());
         }
 
-        UserLearningSettings settings = getOrCreateSettings(user);
-        UserDailyPlan plan = ensureDailyPlan(user, settings.getDailyTarget());
-        return new LearningSyncResponse(accepted, buildState(user, settings.getDailyTarget(), plan));
+        UserLearningSettings settings = getOrCreateSettings(userId);
+        UserDailyPlan plan = ensureDailyPlan(userId, settings.getDailyTarget());
+        return new LearningSyncResponse(accepted, buildState(userId, settings.getDailyTarget(), plan));
     }
 
     private void validateMutation(LearningMutationRequest mutation) {
@@ -171,18 +170,18 @@ public class LearningService {
         }
     }
 
-    private void updateTargetFromMutation(UserAccount user, LearningMutationRequest mutation) {
-        UserLearningSettings settings = getOrCreateSettings(user);
+    private void updateTargetFromMutation(long userId, LearningMutationRequest mutation) {
+        UserLearningSettings settings = getOrCreateSettings(userId);
         settings.setDailyTarget(validateDailyTarget(mutation.dailyTarget()));
         settingsRepository.save(settings);
     }
 
-    private void applyWordMutation(UserAccount user, LearningMutationRequest mutation) {
+    private void applyWordMutation(long userId, LearningMutationRequest mutation) {
         LearningWord word = learningWordRepository.findById(mutation.wordId())
                 .filter(item -> item.getStatus() == ACTIVE_STATUS)
                 .orElseThrow(() -> new BusinessException(ApiCode.NOT_FOUND, "word not found"));
-        UserWordProgress progress = progressRepository.findByUser_IdAndWord_Id(user.getId(), word.getId())
-                .orElseGet(() -> newProgress(user, word));
+        UserWordProgress progress = progressRepository.findByUserIdAndWord_Id(userId, word.getId())
+                .orElseGet(() -> newProgress(userId, word));
         int current = progress.getMasterCount() == null ? 0 : progress.getMasterCount();
         int next = switch (mutation.operation()) {
             case CORRECT_MATCH -> Math.min(3, current + 1);
@@ -196,9 +195,9 @@ public class LearningService {
         progressRepository.save(progress);
     }
 
-    private UserWordProgress newProgress(UserAccount user, LearningWord word) {
+    private UserWordProgress newProgress(long userId, LearningWord word) {
         UserWordProgress progress = new UserWordProgress();
-        progress.setUser(user);
+        progress.setUserId(userId);
         progress.setWord(word);
         progress.setMasterCount(0);
         progress.setMastered(false);
@@ -206,9 +205,9 @@ public class LearningService {
         return progress;
     }
 
-    private void saveMutation(UserAccount user, LearningMutationRequest request) {
+    private void saveMutation(long userId, LearningMutationRequest request) {
         LearningSyncMutation mutation = new LearningSyncMutation();
-        mutation.setUser(user);
+        mutation.setUserId(userId);
         mutation.setMutationId(request.mutationId());
         if (request.wordId() != null) {
             mutation.setWord(learningWordRepository.findById(request.wordId()).orElse(null));
@@ -220,15 +219,15 @@ public class LearningService {
         mutationRepository.save(mutation);
     }
 
-    private UserDailyPlan ensureDailyPlan(UserAccount user, int dailyTarget) {
+    private UserDailyPlan ensureDailyPlan(long userId, int dailyTarget) {
         LocalDate today = LocalDate.now();
-        UserDailyPlan plan = dailyPlanRepository.findByUser_IdAndPlanDate(user.getId(), today)
+        UserDailyPlan plan = dailyPlanRepository.findByUserIdAndPlanDate(userId, today)
                 .orElseGet(() -> {
                     UserDailyPlan created = new UserDailyPlan();
-                    created.setUser(user);
+                    created.setUserId(userId);
                     created.setPlanDate(today);
                     created.setDailyTarget(dailyTarget);
-                    created.replaceItems(selectUnmasteredWords(user.getId(), dailyTarget, Set.of()));
+                    created.replaceItems(selectUnmasteredWords(userId, dailyTarget, Set.of()));
                     return dailyPlanRepository.save(created);
                 });
         if (plan.getDailyTarget() == null || plan.getDailyTarget() < dailyTarget) {
@@ -236,7 +235,7 @@ public class LearningService {
                     .map(UserDailyPlanItem::getWord)
                     .toList();
             Set<Integer> existingIds = existing.stream().map(LearningWord::getId).collect(Collectors.toSet());
-            List<LearningWord> additional = selectUnmasteredWords(user.getId(), dailyTarget, existingIds);
+            List<LearningWord> additional = selectUnmasteredWords(userId, dailyTarget, existingIds);
             if (!additional.isEmpty()) {
                 List<LearningWord> all = new ArrayList<>(existing);
                 all.addAll(additional);
@@ -260,8 +259,8 @@ public class LearningService {
                 .toList();
     }
 
-    private LearningStateResponse buildState(UserAccount user, int dailyTarget, UserDailyPlan plan) {
-        List<UserWordProgress> allProgress = progressRepository.findByUser_Id(user.getId());
+    private LearningStateResponse buildState(long userId, int dailyTarget, UserDailyPlan plan) {
+        List<UserWordProgress> allProgress = progressRepository.findByUserId(userId);
         Map<Integer, UserWordProgress> progressMap = allProgress.stream()
                 .collect(Collectors.toMap(item -> item.getWord().getId(), item -> item, (left, right) -> right));
         List<LearningWord> allWords = learningWordRepository.findAllByStatusOrderByIdAsc(ACTIVE_STATUS);
@@ -302,8 +301,8 @@ public class LearningService {
 
     private Map<Integer, UserWordProgress> progressMap(Long userId, Collection<Integer> wordIds) {
         List<UserWordProgress> progress = wordIds.isEmpty()
-                ? progressRepository.findByUser_Id(userId)
-                : progressRepository.findByUser_IdAndWord_IdIn(userId, wordIds);
+                ? progressRepository.findByUserId(userId)
+                : progressRepository.findByUserIdAndWord_IdIn(userId, wordIds);
         return progress.stream().collect(Collectors.toMap(
                 item -> item.getWord().getId(),
                 item -> item,
@@ -336,10 +335,10 @@ public class LearningService {
         );
     }
 
-    private UserLearningSettings getOrCreateSettings(UserAccount user) {
-        return settingsRepository.findByUser_Id(user.getId()).orElseGet(() -> {
+    private UserLearningSettings getOrCreateSettings(long userId) {
+        return settingsRepository.findByUserId(userId).orElseGet(() -> {
             UserLearningSettings settings = new UserLearningSettings();
-            settings.setUser(user);
+            settings.setUserId(userId);
             settings.setDailyTarget(DEFAULT_DAILY_TARGET);
             return settingsRepository.save(settings);
         });
@@ -352,11 +351,10 @@ public class LearningService {
         return target;
     }
 
-    private UserAccount loadUser(TokenSession session) {
+    private long loadUserId(TokenSession session) {
         if (session == null) {
             throw new BusinessException(ApiCode.UNAUTHORIZED, "invalid token");
         }
-        return userAccountRepository.findById(session.userId())
-                .orElseThrow(() -> new BusinessException(ApiCode.NOT_FOUND, "user not found"));
+        return userDirectory.requireUser(session.userId()).id();
     }
 }

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wordcrush.api.ApiCode;
 import com.wordcrush.server.common.api.ApiResponseWriter;
 import com.wordcrush.server.common.exception.BusinessException;
+import com.wordcrush.server.security.api.TokenSession;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
