@@ -1,140 +1,191 @@
 # WordCrush App
 
-WordCrush 是一个基于 Android + Jetpack Compose 的英语单词学习与配对闯关应用，包含单词本、闯关模式、计时模式、排行榜、游戏记录、头像上传和每日学习计划。
+WordCrush 是一个“英语单词学习 + 配对闯关”系统，包含 Android 移动端、Spring Boot 后端和 TypeScript Web 管理端。移动端面向学习用户，管理端面向管理员维护用户和词库，后端负责统一账号、词库、学习进度、游戏记录与同步服务。
 
-## 仓库布局
+## 功能总览
 
-当前客户端和服务端由同一个 Git 仓库维护：
+### Android 移动端
 
-- `app/`：Android 客户端源码。
-- `server/`：Spring Boot 后端、数据库脚本、词库和 Docker Compose 文件。
-- `admin-web/`：TypeScript + React 词库运营管理端，使用 Nginx 容器部署。
-- `docs/`：客户端与后端接口文档。
+- 注册、登录、会话恢复、修改密码和头像。
+- 单词本浏览、搜索、发音和掌握状态。
+- 经典配对、计时配对、游戏记录和排行榜。
+- 每日学习计划、每日目标和学习进度。
+- Room 缓存与离线变更队列，网络恢复后自动同步。
+
+### Spring Boot 后端
+
+- 用户账号和 JWT Bearer Token 鉴权。
+- 服务端词库、学习状态、每日计划和学习同步。
+- 游戏记录与排行榜。
+- 管理员角色、用户管理和 CSV 词表管理。
+- MySQL 持久化、Redis 缓存、Flyway 数据库迁移。
+
+### Web 管理端
+
+- 管理员登录和概览统计。
+- 用户搜索、启停和密码重置。
+- 词条搜索、编辑、新增、启停。
+- CSV 词表上传、导出和按文件同步停用缺失词条。
+
+## 仓库结构
+
+```text
+word-crush-app/
+├── app/                    # Android 客户端（Kotlin + Jetpack Compose）
+├── server/                 # Spring Boot 后端、数据库迁移、词库和 Docker Compose
+├── admin-web/              # TypeScript + React 管理端
+├── shared/api-contract/    # Android 与后端共享的 API 契约类
+├── docs/                   # 接口契约等项目文档
+├── gradle/                 # Gradle Version Catalog 和 Wrapper 配置
+├── build.gradle.kts        # Android 根构建配置
+└── settings.gradle.kts
+```
+
+各目录的具体说明：
+
+- [移动端 README](./app/README.md)
+- [后端 README](./server/README.md)
+- [管理端 README](./admin-web/README.md)
+- [后端 API 契约](./docs/backend-api.md)
+
+## 系统架构
+
+```text
+Android App ───────┐
+                   ├── HTTPS /word-crush/ ──► Spring Boot ──► MySQL
+Admin Web ──────────┘                         │                Redis
+                                             └── Flyway / JWT
+
+Admin Web ── HTTPS /word-crush-admin/ ──► Caddy ──► Nginx ──► Spring Boot
+```
+
+服务端是词库与学习数据的最终来源。Android 端通过 Retrofit 访问 API，使用 Room 缓存词库和进度，并将离线操作写入 mutation queue；管理端通过 Nginx/Caddy 访问同一套管理员 API。词条停用采用状态字段，不物理删除，以保留用户历史学习进度。
 
 ## 技术栈
 
-- Kotlin / Jetpack Compose / Material 3
-- Hilt / ViewModel / StateFlow / 单向数据流
-- Room / DataStore
-- Retrofit + OkHttp + Gson
-- Glide
+| 子系统 | 主要技术 |
+| --- | --- |
+| 移动端 | Kotlin、Jetpack Compose、Material 3、Hilt、Room、DataStore、Retrofit、OkHttp |
+| 后端 | Java 17、Spring Boot 3.5、Spring Security、JPA、MySQL、Redis、Flyway、JWT |
+| 管理端 | TypeScript、React 19、Vite 7、Nginx |
+| 部署 | Docker Compose、Caddy、Relay 内部网络 |
 
-## 客户端分层与单向数据流
+## 地址与端口
 
-```text
-Compose UI
-  │ Action
-  ▼
-ViewModel ───────────────► UiEffect ──► 导航 / Snackbar / 音频
-  │
-  ├─ UiState ◄── Reducer（纯状态转换）
-  ▼
-UseCase
-  ▼
- Repository
- ├─ LocalDataSource       // Room、DataStore
- └─ RemoteDataSource
-     ├─ Public HTTP API
-     ├─ Authenticated HTTP API
-     └─ Learning HTTP API + offline mutation queue
-          ↓
-   Retrofit / OkHttp
-          ↓
-   Server
-```
-
-每个页面通过 `Action` 向 ViewModel 发送用户意图，ViewModel 通过 UseCase
-执行业务操作并更新不可变 `UiState`。一次性行为使用 `Effect`，不放入
-`StateFlow`，因此重组不会重复触发导航、提示或音频。
-
-经典和计时配对共用 `MatchViewModel` 与纯 `MatchGameReducer`；计时、进度、
-记录保存和活动会话持久化由 UseCase 负责。
-
-Repository 不直接依赖 Retrofit 或 OkHttp。网络层通过 Hilt 区分公共 HTTP、鉴权 HTTP 和学习域 HTTP 客户端。学习数据以服务端为准，客户端使用 Room 缓存和离线 mutation queue 支持断网操作，并在首次登录时提交本地学习进度快照。
-
-## 网络客户端
-
-- 公共 HTTP：登录、注册、排行榜、头像读取和第三方发音。
-- 鉴权 HTTP：checkToken、修改密码、头像上传和游戏记录操作。
-- 学习 HTTP：词库分页、每日计划、学习状态、每日目标和离线进度同步。
-- 鉴权请求只发送 `Authorization: Bearer <token>`。
-- 鉴权 HTTP 收到 401 后清理会话；公共请求不会触发退登。
-- Debug 日志只记录脱敏的请求方法、URL、状态码和耗时，不记录密码、token、请求体或响应体。
-
-默认 API 地址：
+生产环境：
 
 ```text
-https://txy.hejulian.org/word-crush/
+API       https://txy.hejulian.org/word-crush/
+管理端    https://txy.hejulian.org/word-crush-admin/
 ```
 
-配置位置：`app/src/main/java/com/example/wordcrush/data/network/NetworkConfig.kt`。
+本地 Docker Compose：
 
-## 会话行为
-
-`SessionManager` 是 token、用户名、uid 和头像状态的唯一来源，DataStore 只负责持久化。
-
-- 登录成功后保存服务端会话。
-- 冷启动恢复会话并调用鉴权 `checkToken`。
-- token 失效、其他设备登录或改密后，下一次鉴权请求会回到登录页。
-- 退出登录只清理会话数据，不影响应用公共配置。
-
-## 主要接口
-
-- `POST /api/user/login`
-- `POST /api/user/register`
-- `GET /api/user/checkToken`（Bearer 鉴权，无 query token）
-- `POST /api/user/changePassword`（Bearer 鉴权）
-- `POST /api/user/avatar`（Bearer 鉴权）
-- `GET /api/user/avatar/{username}`（公共资源）
-- `POST /api/getTopNRecord`（公共接口）
-- `POST /api/addGameRecord`（Bearer 鉴权）
-- `POST /api/deleteGameRecord`（Bearer 鉴权）
-- `POST /api/getAllGameRecord`（Bearer 鉴权）
-- `GET /api/learning/catalog`（Bearer 鉴权）
-- `GET /api/learning/state`（Bearer 鉴权）
-- `GET /api/learning/plan`（Bearer 鉴权）
-- `PUT /api/learning/settings/daily-target`（Bearer 鉴权）
-- `POST /api/learning/sync`（Bearer 鉴权）
-
-所有 JSON API 使用统一响应格式：
-
-```json
-{
-  "code": 200,
-  "msg": "success",
-  "data": {}
-}
+```text
+后端      http://127.0.0.1:18080
+管理端    http://127.0.0.1:18081
+健康检查  http://127.0.0.1:18080/actuator/health
 ```
 
-详细字段见 [docs/backend-api.md](./docs/backend-api.md)。
+MySQL 和 Redis 默认只在 Compose 内部网络中提供服务，不发布到宿主机。
 
-## 编译
+## 快速开始
 
-环境要求：Android Studio、JDK 17/兼容的 Android Studio JBR、Android SDK 35/36。
+### 启动后端和管理端
 
-```bash
-./gradlew.bat :app:compileDebugKotlin
-./gradlew.bat :app:assembleDebug
+在仓库根目录执行：
+
+```powershell
+docker compose --env-file server/.env.example `
+  -f server/docker-compose.yml `
+  -p wordcrush-local up -d --build
 ```
 
-调试 APK：`app/build/outputs/apk/debug/app-debug.apk`。
+然后访问 <http://127.0.0.1:18081>。本地管理员账号和密码来自 `server/.env.example`；生产部署必须替换示例密码、数据库密码和 JWT 密钥。
 
-后端构建：
+查看服务状态：
+
+```powershell
+docker compose --env-file server/.env.example `
+  -f server/docker-compose.yml `
+  -p wordcrush-local ps
+```
+
+### 构建 Android 客户端
+
+环境要求：Android Studio、JDK 17、Android SDK Platform 36。执行：
+
+```powershell
+.\gradlew.bat :app:compileDebugKotlin
+.\gradlew.bat :app:testDebugUnitTest
+.\gradlew.bat :app:assembleDebug
+```
+
+Debug APK 输出到 `app/build/outputs/apk/debug/app-debug.apk`。
+
+### 开发管理端
+
+如果后端已运行在 `http://127.0.0.1:18080`：
+
+```powershell
+cd admin-web
+npm ci
+npm run dev
+```
+
+Vite 默认地址为 <http://127.0.0.1:5173>，会把 `/api` 代理到本地后端。生产子路径部署依赖相对资源路径和相对 API 路径，请参阅 [admin-web/README.md](./admin-web/README.md)。
+
+## 验证命令
+
+后端：
 
 ```powershell
 cd server
-.\mvnw.cmd -q package
-docker compose --env-file .env.example -p wordcrush-local up -d --build
+.\mvnw.cmd -q test
+docker compose --env-file .env.example -p wordcrush-local config --quiet
 ```
 
-后端部署和远程 Docker 操作以 [word-crush-deployment Skill](./.agents/skills/word-crush-deployment/SKILL.md) 为准。
-
-## Web 管理端
-
-管理端提供管理员登录、用户启停与密码重置、词条搜索/编辑/新增、CSV 词表导入导出以及概览统计。开发环境启动后访问 `http://127.0.0.1:18081`；生产 Compose 通过 Caddy 暴露在 `/word-crush-admin/`。
+管理端：
 
 ```powershell
-docker compose --env-file server/.env.example -f server/docker-compose.yml -p wordcrush-local up -d --build
+cd admin-web
+npm run build
+python smoke_test.py
 ```
 
-详细的 CSV 格式和 Vite 开发方式见 [admin-web/README.md](./admin-web/README.md)。
+移动端：
+
+```powershell
+cd ..
+.\gradlew.bat :app:testDebugUnitTest
+```
+
+## 部署概览
+
+生产部署使用 `server/docker-compose.yml` 和 `server/docker-compose.server.yml`：
+
+```powershell
+cd server
+docker compose --env-file .env `
+  -p wordcrush-server `
+  -f docker-compose.yml `
+  -f docker-compose.server.yml `
+  up -d --build
+```
+
+部署后应检查：
+
+1. `app`、`admin`、MySQL 和 Redis 容器状态。
+2. `http://127.0.0.1:18080/actuator/health` 返回 `UP`。
+3. 管理端页面和管理员 API 路由可通过 HTTPS 访问。
+4. 原有 Relay 根路径仍然正常。
+
+详细的环境变量、迁移、CSV 规则和服务器部署说明见 [server/README.md](./server/README.md)。
+
+## 安全约定
+
+- `.env`、真实数据库密码、JWT 密钥和管理员密码不得提交到 Git。
+- 受保护 API 只使用 `Authorization: Bearer <token>`。
+- 日志不记录密码、token、请求体或响应体。
+- 管理端只允许 `ADMIN` 角色访问管理 API。
+- 词条和用户默认使用停用状态代替物理删除，降低数据误操作风险。
